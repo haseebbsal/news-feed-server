@@ -28,16 +28,32 @@ const userSchema = new mongoose.Schema({
     }
 })
 
+const individualSchedule=new mongoose.Schema({
+    title:String,scheduleDate:String,content:String,domain:String
+},{timestamps:true})
+
 const scheduleSchema=new mongoose.Schema({
     userId:{
         required:true,
         type:mongoose.Types.ObjectId
     },
-    scheduledData:{
-        type:[{title:String,scheduleDate:String,content:String,domain:String}],
+    title:{
+        type:String,
         required:true
     },
-})
+    scheduleDate:{
+        type:Date,
+        required:true
+    },
+    content:{
+        type:String,
+        required:true
+    },
+    domain:{
+        type:String,
+        required:true
+    }
+},{timestamps:true})
 
 const scheduleModel=mongoose.model('schedule',scheduleSchema)
 // const articlePublishingSchema = new mongoose.Schema({

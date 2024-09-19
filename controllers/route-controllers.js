@@ -43,7 +43,8 @@ async function getURLArticle(req, res) {
         originalArticle: html,
         rewriteArticle: data1,
         link,
-        summary: data2
+        summary: data2,
+        relevanceIndex:result4.response.text()
     }
     res.json(outputJson)
 }

@@ -35,7 +35,8 @@ const individualSchedule=new mongoose.Schema({
 const scheduleSchema=new mongoose.Schema({
     userId:{
         required:true,
-        type:mongoose.Types.ObjectId
+        type:mongoose.Types.ObjectId,
+        ref:"users"
     },
     title:{
         type:String,
@@ -44,6 +45,7 @@ const scheduleSchema=new mongoose.Schema({
     scheduleDate:{
         type:Date,
         required:true
+        
     },
     content:{
         type:String,

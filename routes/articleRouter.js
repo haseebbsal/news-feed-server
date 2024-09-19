@@ -36,13 +36,15 @@ articleRouter.post('/publish',async (req,res)=>{
 
 articleRouter.post('/schedule', async (req,res)=>{
     const {title,domain,article,scheduleDate}=req.body
+    const domainToPublishTo=domains[domain]
     const {user}=jwt.verify(req.headers.authorization.split(' ')[1],process.env.JWT_SECRET)
     try{
-        const addToScheduledData=await scheduleModel.create({userId:user._id,title,scheduleDate,content:article,domain})
+        const addToScheduledData=await scheduleModel.create({userId:user._id,title,scheduleDate,content:article,domain:domainToPublishTo})
         return res.json({message:"Success",data:addToScheduledData})
     }
     catch(e){
-        return res.json({message:"Fail",data:e})
+        console.log(e)
+        return res.status(400).json({message:"Fail",data:e})
     }
     // const findIfUserAlreadyScheduled= await scheduleModel.findOne({userId:user._id})
     // if(findIfUserAlreadyScheduled)
@@ -68,8 +70,19 @@ articleRouter.delete('/scheduleArticle',async (req,res)=>{
         return res.json({message:"Success",data:deleteScheduleArticle})
     }
     catch(e){
-        return res.json({message:"Fail",data:e})
+        return res.status(400).json({message:"Fail",data:e})
     }
+})
+
+articleRouter.get('/scheduledArticless',async (req,res)=>{
+    const {page,limit}=req.query
+    const skip=(Number(page)-1)*Number(limit)
+    const {user}=jwt.verify(req.headers.authorization.split(' ')[1],process.env.JWT_SECRET)
+    const nextPage = parseInt(page) * limit
+    const total=await scheduleModel.find({userId:user._id}).countDocuments()
+    // console.log('total',total,skip)
+    const getUserArticles=await scheduleModel.find({userId:user._id}).skip(skip).limit(Number(limit)).populate('userId')
+    return res.json({message:"Success",data:getUserArticles,page,lastPage:nextPage>=total?0:Number(page)+1})
 })
 module.exports=articleRouter
 // articleRouter.post('/new', (req, res) => {

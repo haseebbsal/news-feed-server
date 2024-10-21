@@ -11,19 +11,39 @@ const PORT = `${process.env.PORT}`
 const helmet=require('helmet')
 const { scheduleModel } = require('./db-models')
 const { default: axios } = require('axios')
+const {OAuth2Client} = require('google-auth-library');
+const client = new OAuth2Client();
 app.use(cors({
-    origin: `${process.env.Allowed_Origins}`
+    origin: `*`
 }))
 app.use(helmet())
 app.use(morgan('dev'))
 app.use(express.json())
 // app.use(formidableMiddleware())
+
+app.post('/registerGoogle',async (req,res)=>{
+    const { data} = await axios.get('https://www.googleapis.com/oauth2/v1/userinfo', {
+        headers: { Authorization: `Bearer ${req.body.token}` },
+      });
+    const check=await client.getTokenInfo(req.body.token)
+    // const ticket = await client.verifyIdToken({
+    //     idToken: req.body.token,
+    //     // audience: CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
+    //     // Or, if multiple clients access the backend:
+    //     //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
+    // });
+    //     const payload = ticket.getPayload();
+    return res.json(check)
+//   const userid = payload['sub'];
+  return res.json(data)
+})
 app.use('/api', routeRouter)
 
 async function connect() {
     await mongoose.connect(process.env.DATABASE_URL)
     console.log('Connected To Database')
-    app.listen(PORT, () => {
+
+    app.listen(PORT || 8080, () => {
         console.log(`Server Started And Listening On Port ${PORT}`)
     })
 }

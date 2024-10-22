@@ -44,7 +44,8 @@ async function getURLArticle(req, res) {
         rewriteArticle: data1,
         link,
         summary: data2,
-        relevanceIndex:result4.response.text()
+        relevanceIndex:Number(result4.response.text().replace('\n',''))
+    
     }
     res.json(outputJson)
 }

@@ -1,10 +1,11 @@
 const express = require('express')
 const userRouter = require('./routes/user-router')
 const routeRouter = express.Router()
-const jwt=require('jsonwebtoken')
 const articleRouter = require('./routes/articleRouter')
 const { login, register, logout, newTokens } = require('./controllers/auth')
-const { initalRoute, getURLArticle } = require('./controllers/route-controllers')
+const { initalRoute} = require('./controllers/route-controllers')
+const { authMiddleWare } = require('./utils')
+const { GetArticleDataNotSchedule } = require('./controllers/article')
 require('dotenv').config()
 
 routeRouter.use('/user', userRouter)
@@ -13,18 +14,7 @@ routeRouter.get('/', initalRoute)
 routeRouter.post('/login', login)
 routeRouter.post('/register', register)
 routeRouter.post('/logout', logout)
-routeRouter.post('/url', async (req, res, next) => {
-    const accessToken = req.headers.authorization.split(' ')[1]
-    try {
-        const accessTokenData = jwt.verify(accessToken, process.env.JWT_SECRET)
-        next()
-    }
-    catch {
-        return res.status(400).json({
-            message: "UnAuthorized"
-        })
-    }
-}, getURLArticle)
+routeRouter.post('/url',authMiddleWare, GetArticleDataNotSchedule)
 routeRouter.get('/tokens',newTokens)
 
 module.exports=routeRouter

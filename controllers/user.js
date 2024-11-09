@@ -3,8 +3,7 @@ const {userModel} = require('../db-models')
 
 const individualUser = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
-
-    const accessTokenData = jwt.verify(accessToken, process.env.JWT_SECRET)
+    const accessTokenData=verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const userData = await userModel.findOne({ _id: userId })
     return res.json({
@@ -16,7 +15,7 @@ const individualUser = async (req, res) => {
 
 const searchUser = async (req, res) => {
     const accessToken=req.headers.authorization.split(' ')[1]
-    const accessTokenData = jwt.verify(accessToken, process.env.JWT_SECRET)
+    const accessTokenData=verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const { name, page } = req.query
     const limit = 10

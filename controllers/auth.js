@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const {userModel} = require('../db-models')
+const {userModel, scheduleModel} = require('../db-models')
 
 const login = async (req, res) => {
     const { email, password } = req.body
@@ -56,6 +56,7 @@ const register = async (req, res) => {
             const saltRounds = 10;
             const newPassword = await bcrypt.hash(password, saltRounds)
             const createNewUser = await userModel.create({ email, username, password: newPassword })
+            const createScheduleForUser=await scheduleModel.create({userId:createNewUser._id})
             return res.status(200).json(createNewUser)
         }
         return res.status(400).json({ message: 'email exists already' })
@@ -68,7 +69,7 @@ const register = async (req, res) => {
 const logout = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     try {
-        const accessTokenData = jwt.verify(accessToken, process.env.JWT_SECRET)
+        const accessTokenData=verifyToken(accessToken)
         const userId = accessTokenData.user._id
         await userModel.updateOne({ _id: userId }, { $set: { refreshToken: "" } })
         return res.json({
@@ -85,7 +86,7 @@ const logout = async (req, res) => {
 const newTokens = async (req, res) => {
     const refreshToken = req.headers.authorization.split(' ')[1]
     try {
-        const refreshTokenData = jwt.verify(refreshToken, process.env.JWT_SECRET)
+        const refreshTokenData=verifyToken(refreshToken)
         const userId = refreshTokenData.user._id
         const findUser = await userModel.findOne({ _id: userId })
         if (findUser.refreshToken == refreshToken) {

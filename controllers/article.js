@@ -34,7 +34,7 @@ const scheduleArticle=async (req,res)=>{
         const errors=validateResult.array().map((e)=>e.msg)
         return res.status(400).json({data:errors})
     }
-    let {keywords,domain,urls,relevanceIndex,timeOfCheck}=req.body
+    let {keywords,domain,urls,relevanceIndex,timeOfCheck,publishType}=req.body
     let checkTime
     if(Number(timeOfCheck)==1){
         checkTime=moment().add(1, 'days');
@@ -52,7 +52,7 @@ const scheduleArticle=async (req,res)=>{
     const token=req.headers.authorization.split(' ')[1]
     const {user}=verifyToken(token)
     try{
-        const addToScheduledData=await scheduleModel.updateOne({userId:user._id},{"$set":{urls,keywords,domain,relevanceIndex,timeOfCheck:checkTime,timeCheckType:timeOfCheck}},{upsert:true})
+        const addToScheduledData=await scheduleModel.updateOne({userId:user._id},{"$set":{urls,keywords,domain,relevanceIndex,timeOfCheck:checkTime,timeCheckType:timeOfCheck,publishType}},{upsert:true})
         return res.json({message:"Success",data:addToScheduledData})
     }
     catch(e){
@@ -64,17 +64,33 @@ const scheduleArticle=async (req,res)=>{
 }
 
 const getScheduledArticles= async (req,res)=>{
+    const token=req.headers.authorization.split(' ')[1]
+    const {user}=verifyToken(token)
+    const getScheduledArticle=await scheduleModel.findOne({userId:user._id},{userId:0})
+    return res.json({data:getScheduledArticle})
+}
+
+const getPublishedArticle=async (req,res)=>{
     const validateResult=validationResult(req)
     if(!validateResult.isEmpty()){
         const errors=validateResult.array().map((e)=>e.msg)
         return res.status(400).json({data:errors})
     }
+
     const {id}=req.query
-    const getScheduledArticle=await scheduleModel.findOne({_id:id},{userId:0})
-    return res.json({data:getScheduledArticle})
+    const getPublishedArticle=await publishedArticleModel.findOne({articleId:id})
+    if(getPublishedArticle){
+        return res.json({data:getPublishedArticle})
+    }
+    return res.status(400).json({message:"Id Doesnt Exist"})
 }
 
 const GetArticleDataNotSchedule=async (req,res)=>{
+    const validateResult=validationResult(req)
+    if(!validateResult.isEmpty()){
+        const errors=validateResult.array().map((e)=>e.msg)
+        return res.status(400).json({data:errors})
+    }
     const {url,keywords,relevanceIndex}=req.body
     const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
@@ -89,7 +105,7 @@ const GetArticleDataNotSchedule=async (req,res)=>{
 
         return res.json({relevanceIndex:relevanceIndexGemini,rewritten:rewriteHtml,summary:summaryHtml,original:html,title,link})
     }
-    return res.status(400).json({message:"Low Relevance Score"})
+    return res.status(400).json({message:"Article Has Low Relevance Score"})
 }
 
 const DeleteArticle=async (req,res)=>{
@@ -124,7 +140,7 @@ const getAllPublishedArticles=async (req,res)=>{
     const accessToken = req.headers.authorization.split(' ')[1]
     const accessTokenData=verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    const totalDocuments=await publishedArticleModel.find().countDocuments()
+    const totalDocuments=await publishedArticleModel.find({userId:userId}).countDocuments()
     const getAllPublishedForUser=await publishedArticleModel.find({userId:userId}).skip(skip).limit(limit)
     return res.json({data:getAllPublishedForUser,page,total:totalDocuments,nextPage:totalDocuments>numberOfDocumentsToReturn?page+1:0})
 }
@@ -149,4 +165,4 @@ const updatePublishedArticle=async(req,res)=>{
 
 }
 
-module.exports={scheduleArticle,getScheduledArticles,publishArticle,GetArticleDataNotSchedule,DeleteArticle,getAllPublishedArticles,updatePublishedArticle}
+module.exports={scheduleArticle,getScheduledArticles,publishArticle,GetArticleDataNotSchedule,DeleteArticle,getAllPublishedArticles,updatePublishedArticle,getPublishedArticle}

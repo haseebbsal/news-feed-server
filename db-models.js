@@ -53,10 +53,12 @@ const scheduleSchema=new mongoose.Schema({
     },
     timeOfCheck:{
         type:Date,
+        default:null
     },
     timeCheckType:{
         type:Number,
-        enum:[1,2,3,4]
+        enum:[1,2,3,4],
+        default:null
     },
     publishType:{
         type:String,

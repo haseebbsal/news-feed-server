@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken')
 const {userModel} = require('../db-models')
+const { verifyToken } = require('../utils')
 
 const individualUser = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]

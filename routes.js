@@ -6,6 +6,7 @@ const { login, register, logout, newTokens } = require('./controllers/auth')
 const { initalRoute} = require('./controllers/route-controllers')
 const { authMiddleWare } = require('./utils')
 const { GetArticleDataNotSchedule } = require('./controllers/article')
+const { getDissbotValidation } = require('./utils/validations')
 require('dotenv').config()
 
 routeRouter.use('/user', userRouter)
@@ -14,7 +15,7 @@ routeRouter.get('/', initalRoute)
 routeRouter.post('/login', login)
 routeRouter.post('/register', register)
 routeRouter.post('/logout', logout)
-routeRouter.post('/url',authMiddleWare, GetArticleDataNotSchedule)
+routeRouter.post('/url',authMiddleWare,getDissbotValidation ,GetArticleDataNotSchedule)
 routeRouter.get('/tokens',newTokens)
 
 module.exports=routeRouter

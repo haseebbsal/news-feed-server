@@ -43,4 +43,5 @@ const getAllPublishedArticleValidation=[query('page').notEmpty().withMessage('Pa
 const getDissbotValidation=[body('url').notEmpty().withMessage('Url is Required').not().isNumeric().withMessage('Invalid Url Type'),body('keywords').notEmpty().withMessage('Keywords is Required').not().isNumeric().withMessage('Invalid Keywords Type'),body('relevanceIndex').notEmpty().withMessage('Relevance Index is Required').isNumeric().withMessage('Invalid Relevance Index Type')]
 
 const getPublishedArticleValidation=[query('id').notEmpty().withMessage('Id is required').isNumeric().withMessage('Invalid Id Type')]
+
 module.exports={postScheduleValidation,publishArticleValidation,deleteArticleValidation,updateArticleValidation,getAllPublishedArticleValidation,getDissbotValidation,getPublishedArticleValidation}

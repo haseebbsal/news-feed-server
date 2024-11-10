@@ -40,67 +40,64 @@ cron.schedule('0 0 * * *', async () => {
             if (currentDate == nextDate) {
                 for (let j of urls) {
                     const articleUrlsArray = await Scrap(j)
-                    const waitForURlToFinish = await new Promise(async (resolve, reject) => {
-                        for (let p of articleUrlsArray) {
-                            const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
-                            if (!checkIfAlreadyPublishedUrl) {
-                                const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link } = await new Promise((resolvee, reject) => {
-                                    setTimeout(async () => {
-                                        resolvee(await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType))
-                                    }, 30000)
-                                })
-                                if (!message) {
-                                     let checkTime
-                                    if(Number(timeCheckType)==1){
-                                        checkTime=moment().add(1, 'days');
-                                        await scheduleModel.updateOne({_id},{$set:{timeOfCheck:checkTime}})
-                                    }
-                                    else if(Number(timeCheckType)==2){
-                                        checkTime=moment().add(7, 'days');
-                                        await scheduleModel.updateOne({_id},{$set:{timeOfCheck:checkTime}})
-                                    }
-                                    else if(Number(timeCheckType)==3){
-                                        checkTime=moment().add(30, 'days');
-                                        await scheduleModel.updateOne({_id},{$set:{timeOfCheck:checkTime}})
-                                    }
-                                    else{
-                                        checkTime=moment().add(365, 'days');
-                                        await scheduleModel.updateOne({_id},{$set:{timeOfCheck:checkTime}})
-                                    }
-                                    
-                                    if (original) {
-                                        const payload = { title, "status": "publish", content: original }
-                                        const domain = domains[wordpressDomain]
-                                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                                        const { id } = uploadingToDomain.data
-                                        const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain })
-                                        console.log('published Original Article', publishArticle._id)
-                                        console.log('uploaded to wordpress', uploadingToDomain.message)
-                                        return
-                                    }
-                                    if (summary) {
-                                        const payload = { title, "status": "publish", content: summary }
-                                        const domain = domains[wordpressDomain]
-                                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                                        const { id } = uploadingToDomain.data
-                                        const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain })
-                                        console.log('published Summary Article', publishArticle._id)
-                                        console.log('uploaded to wordpress', uploadingToDomain.message)
-                                        return
-                                    }
-                                    const payload = { title, "status": "publish", content: rewritten }
+                    for (let p of articleUrlsArray) {
+                        const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
+                        if (!checkIfAlreadyPublishedUrl) {
+                            const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link } = await new Promise((resolvee, reject) => {
+                                setTimeout(async () => {
+                                    resolvee(await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType))
+                                }, 30000)
+                            })
+                            if (!message) {
+                                let checkTime
+                                if (Number(timeCheckType) == 1) {
+                                    checkTime = moment().add(1, 'days');
+                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                                }
+                                else if (Number(timeCheckType) == 2) {
+                                    checkTime = moment().add(7, 'days');
+                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                                }
+                                else if (Number(timeCheckType) == 3) {
+                                    checkTime = moment().add(30, 'days');
+                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                                }
+                                else {
+                                    checkTime = moment().add(365, 'days');
+                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                                }
+
+                                if (original) {
+                                    const payload = { title, "status": "publish", content: original }
                                     const domain = domains[wordpressDomain]
                                     const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
                                     const { id } = uploadingToDomain.data
-                                    const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain })
-                                    console.log('published Rewritten Article', publishArticle._id)
+                                    const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain })
+                                    console.log('published Original Article', publishArticle._id)
                                     console.log('uploaded to wordpress', uploadingToDomain.message)
                                     return
                                 }
+                                if (summary) {
+                                    const payload = { title, "status": "publish", content: summary }
+                                    const domain = domains[wordpressDomain]
+                                    const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                                    const { id } = uploadingToDomain.data
+                                    const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain })
+                                    console.log('published Summary Article', publishArticle._id)
+                                    console.log('uploaded to wordpress', uploadingToDomain.message)
+                                    return
+                                }
+                                const payload = { title, "status": "publish", content: rewritten }
+                                const domain = domains[wordpressDomain]
+                                const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                                const { id } = uploadingToDomain.data
+                                const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain })
+                                console.log('published Rewritten Article', publishArticle._id)
+                                console.log('uploaded to wordpress', uploadingToDomain.message)
+                                return
                             }
                         }
-                        resolve('done')
-                    })
+                    }
                 }
             }
             console.log('not equal')

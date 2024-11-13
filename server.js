@@ -45,7 +45,13 @@ cron.schedule('0 0 * * *', async () => {
                         if (!checkIfAlreadyPublishedUrl) {
                             const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link } = await new Promise((resolvee, reject) => {
                                 setTimeout(async () => {
-                                    resolvee(await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType))
+                                    try{
+                                        resolvee(await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType))
+                                        
+                                    }
+                                    catch{
+                                        resolvee(await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType))
+                                    }
                                 }, 30000)
                             })
                             if (!message) {

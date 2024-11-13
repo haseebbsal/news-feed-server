@@ -99,7 +99,7 @@ const GetArticleDataNotSchedule=async (req,res)=>{
     console.log('gemini',relevanceIndexGemini)
     if(relevanceIndexGemini>=relevanceIndex){
         const rewritePrompt=`You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring that the images are preserved exactly as they are (whether they are base64-encoded or external URLs).`
-        const summaryPrompt=`You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML while keeping the images and other non-text elements unchanged. The structure of the HTML must remain intact, and images should be preserved exactly as they are.`
+        const summaryPrompt=`You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML. If the images are relevant to the summary, they should be preserved; otherwise, they can be removed. The structure of the HTML should be maintained, with non-text elements included only when necessary for the summary.`
         const rewriteHtml=await rewriteOrSummaryHtml(rewritePrompt,html,model)
         const summaryHtml=await rewriteOrSummaryHtml(summaryPrompt,html,model)
 

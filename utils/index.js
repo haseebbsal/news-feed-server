@@ -99,7 +99,7 @@ const GetArticleDataSchedule=async (url,keywords,relevanceIndex,publishType)=>{
             const rewriteHtml=await rewriteOrSummaryHtml(rewritePrompt,html,model)
             return {relevanceIndex:relevanceIndexGemini,rewritten:rewriteHtml,title,link}
         }
-        const summaryPrompt=`You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML while keeping the images and other non-text elements unchanged. The structure of the HTML must remain intact, and images should be preserved exactly as they are.`
+        const summaryPrompt=`You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML. If the images are relevant to the summary, they should be preserved; otherwise, they can be removed. The structure of the HTML should be maintained, with non-text elements included only when necessary for the summary.`
         const summaryHtml=await rewriteOrSummaryHtml(summaryPrompt,html,model)
         return {relevanceIndex:relevanceIndexGemini,summary:summaryHtml,title,link}
     }

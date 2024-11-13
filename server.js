@@ -49,23 +49,7 @@ cron.schedule('0 0 * * *', async () => {
                                 }, 30000)
                             })
                             if (!message) {
-                                let checkTime
-                                if (Number(timeCheckType) == 1) {
-                                    checkTime = moment().add(1, 'days');
-                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
-                                }
-                                else if (Number(timeCheckType) == 2) {
-                                    checkTime = moment().add(7, 'days');
-                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
-                                }
-                                else if (Number(timeCheckType) == 3) {
-                                    checkTime = moment().add(30, 'days');
-                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
-                                }
-                                else {
-                                    checkTime = moment().add(365, 'days');
-                                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
-                                }
+
 
                                 if (original) {
                                     const payload = { title, "status": "publish", content: original }
@@ -99,6 +83,25 @@ cron.schedule('0 0 * * *', async () => {
                         }
                     }
                 }
+
+                let checkTime
+                if (Number(timeCheckType) == 1) {
+                    checkTime = moment().add(1, 'days');
+                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                }
+                else if (Number(timeCheckType) == 2) {
+                    checkTime = moment().add(7, 'days');
+                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                }
+                else if (Number(timeCheckType) == 3) {
+                    checkTime = moment().add(30, 'days');
+                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                }
+                else {
+                    checkTime = moment().add(365, 'days');
+                    await scheduleModel.updateOne({ _id }, { $set: { timeOfCheck: checkTime } })
+                }
+
             }
             console.log('not equal')
         }

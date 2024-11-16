@@ -116,12 +116,8 @@ const GetArticleDataNotSchedule = async (req, res) => {
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
         const rewriteImage = await generateImage(title)
-        // const summaryImage = await generateImage(title)
         const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant. You must remove all images from the HTML content. The only image that should remain is the one with the following URL, which should be included in the body of the content: ${rewriteImage}. Additionally, you should include the following URL at the bottom of the article: ${link}.`
-        // const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML. If the images are relevant to the summary, they should be preserved; otherwise, they can be removed. The structure of the HTML should be maintained, with non-text elements included only when necessary for the summary.`
-        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.
-`
-
+        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.`
         const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
         const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 

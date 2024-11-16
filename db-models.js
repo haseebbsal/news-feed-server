@@ -51,14 +51,22 @@ const scheduleSchema=new mongoose.Schema({
         enum:domainEnum,
         default:'1'
     },
+    periodicity:{
+        type:{hour:Number,minute:Number},
+        default:{hour:0,minute:0}
+    },
     timeOfCheck:{
         type:Date,
         default:null
     },
     timeCheckType:{
         type:Number,
-        enum:[1,2,3,4],
+        enum:[1,2,3,4,5,6,7,8],
         default:null
+    },
+    lowRelevanceArticles:{
+        type:[String],
+        default:[]
     },
     publishType:{
         type:String,
@@ -92,6 +100,11 @@ const publishedArticlesSchema=new mongoose.Schema(
         domain:{
             type:String,
             enum:domainEnum
+        },
+        publishType:{
+            type:String,
+            enum:['1','2','3'],
+            required:true
         }
     },{timestamps:true}
 )

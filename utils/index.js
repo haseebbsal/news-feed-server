@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAi = require('openai')
+require('dotenv').config()
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1']
 

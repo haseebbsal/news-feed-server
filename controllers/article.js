@@ -4,6 +4,7 @@ const { scheduleModel, publishedArticleModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
 const { default: axios } = require("axios")
+require('dotenv').config()
 const OpenAi = require('openai')
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 

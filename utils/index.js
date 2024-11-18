@@ -11,6 +11,15 @@ const domains = {
     '1': "https://rias-aero.com"
 }
 
+function extractTextFromHTML(html) {
+    // Load the HTML into Cheerio
+    const $ = cheerio.load(html);
+
+    // Extract and clean the text from the body (or the entire HTML)
+    const textContent = $('body').text().trim().replace(/\n/g, '').replace(/\s\s/g, '') // You can use '$' instead of 'body' to extract from all HTML
+
+    return textContent;
+}
 
 const timeOfCheck = {
     "1": "Once Per Day",
@@ -29,11 +38,11 @@ const publishType = {
     "3": "Summary",
 }
 
-async function GetArticleData(p, keywords, relevanceIndex, publishType){
-    try{
+async function GetArticleData(p, keywords, relevanceIndex, publishType) {
+    try {
         return await GetArticleDataSchedule(p, keywords, relevanceIndex, publishType)
     }
-    catch(e){
+    catch (e) {
         console.log(`error`)
         return await GetArticleData(p, keywords, relevanceIndex, publishType)
     }
@@ -115,12 +124,38 @@ async function rewriteOrSummaryHtml(prompt, html, model) {
 
 const dissbotFetchArticle = async (url) => {
     const token = process.env.DISSBOT_API
-    const dissbot_api_call = await axios.get(`https://api.diffbot.com/v3/article?url=${url}&token=${token}`)
-    const text = dissbot_api_call.data.objects[0].text
-    const html = dissbot_api_call.data.objects[0].html
-    const title = dissbot_api_call.data.objects[0].title
-    const link = dissbot_api_call.data.request.pageUrl
-    return { text, html, link, title }
+    const cheerio = require('cheerio');
+    const readability = require('node-readability');
+
+    return await new Promise((resolve,reject)=>{
+        readability(url, function (err, article) {
+            if (err) {
+                console.error(err);
+            } else {
+                // console.log('Content:', article.content);
+    
+                const text = extractTextFromHTML(article.content);
+                // console.log('Extracted Text:', text);
+                resolve({html:article.content,link:url,text,title:article.title})
+            }
+        });
+    })
+
+
+
+
+    
+
+
+
+
+
+    // const dissbot_api_call = await axios.get(`https://api.diffbot.com/v3/article?url=${url}&token=${token}`)
+    // const text = dissbot_api_call.data.objects[0].text
+    // const html = dissbot_api_call.data.objects[0].html
+    // const title = dissbot_api_call.data.objects[0].title
+    // const link = dissbot_api_call.data.request.pageUrl
+    // return { text, html, link, title }
 }
 
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType) => {
@@ -163,4 +198,4 @@ const generateImage = async (title) => {
 }
 
 
-module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage,GetArticleData }
+module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData }

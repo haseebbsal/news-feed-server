@@ -134,9 +134,10 @@ const dissbotFetchArticle = async (url) => {
             } else {
                 // console.log('Content:', article.content);
     
-                // const text = extractTextFromHTML(article.content);
-                // console.log('Extracted Text:', text);
-                resolve({html:article.content,link:url,text:article.textBody,title:article.title})
+                const text = extractTextFromHTML(article.content);
+                // console.log('Extracted Text:', article.textBody);
+                // console.log('content',article.content)
+                resolve({html:article.content,link:url,text,title:article.title})
             }
         });
     })

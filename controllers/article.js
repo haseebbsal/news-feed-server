@@ -113,6 +113,8 @@ const GetArticleDataNotSchedule = async (req, res) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const { text, html, link, title } = await dissbotFetchArticle(url)
+    console.log('html',html)
+    console.log('text',text)
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {

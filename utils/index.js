@@ -127,13 +127,14 @@ const dissbotFetchArticle = async (url) => {
     const cheerio = require('cheerio');
     const readability = require('node-readability');
 
-    return await new Promise((resolve,reject)=>{
+    return await new Promise((resolve, reject) => {
         readability(url, function (err, article) {
             if (err) {
-                console.error(err);
+                console.log('error', url)
+                resolve({ error: "no page exists" })
             } else {
                 const text = extractTextFromHTML(article.content);
-                resolve({html:article.content,link:url,text,title:article.title})
+                resolve({ html: article.content, link: url, text, title: article.title })
             }
         });
     })
@@ -141,7 +142,7 @@ const dissbotFetchArticle = async (url) => {
 
 
 
-    
+
 
 
 
@@ -158,23 +159,27 @@ const dissbotFetchArticle = async (url) => {
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const { text, html, link, title } = await dissbotFetchArticle(url)
-    const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
-    console.log('gemini', relevanceIndexGemini)
-    if (relevanceIndexGemini >= relevanceIndex) {
-        if (publishType != '2' && publishType != '3') {
-            return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
-        }
-        if (publishType == '2') {
-            const rewriteImage = await generateImage(title)
-            const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant. You must remove all images from the HTML content. The only image that should remain is the one with the following URL, which should be included in the body of the content: ${rewriteImage}. Additionally, you should include the following URL at the bottom of the article: ${link}.`
-            const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
-            return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link }
-        }
-        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.`
+    const { text, html, link, title, error } = await dissbotFetchArticle(url)
+    if (!error) {
+        const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
+        console.log('gemini', relevanceIndexGemini)
+        if (relevanceIndexGemini >= relevanceIndex) {
+            if (publishType != '2' && publishType != '3') {
+                return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
+            }
+            if (publishType == '2') {
+                const rewriteImage = await generateImage(title)
+                const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant. You must remove all images from the HTML content. The only image that should remain is the one with the following URL, which should be included in the body of the content: ${rewriteImage}. Additionally, you should include the following URL at the bottom of the article: ${link}.`
+                const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
+                return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link }
+            }
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.`
 
-        const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
-        return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }
+            const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
+            return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }
+        }
+        return { message: "Low Relevance Score" }
+
     }
     return { message: "Low Relevance Score" }
 

@@ -236,6 +236,7 @@ const launchSearch = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity } = await scheduleModel.findOne({ userId })
+    console.log('publishType',publishType)
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             const articleUrlsArray = await Scrap(j)

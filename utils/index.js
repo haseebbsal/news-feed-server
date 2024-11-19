@@ -102,7 +102,7 @@ Your task is to calculate a relevance score on a scale from 0 to 1 for the artic
         ],
     });
     // const result4 = await model.generateContent([systemPrompt, text]);
-    console.log('openAi response relevance', console.log(completion.choices[0].message))
+    // console.log('openAi response relevance', console.log(completion.choices[0].message))
     const relevanceIndex = Number(completion.choices[0].message.content)
     return relevanceIndex
 }
@@ -132,11 +132,7 @@ const dissbotFetchArticle = async (url) => {
             if (err) {
                 console.error(err);
             } else {
-                // console.log('Content:', article.content);
-    
                 const text = extractTextFromHTML(article.content);
-                // console.log('Extracted Text:', article.textBody);
-                // console.log('content',article.content)
                 resolve({html:article.content,link:url,text,title:article.title})
             }
         });
@@ -166,7 +162,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('gemini', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
-        if (publishType != '2' || publishType != '3') {
+        if (publishType != '2' && publishType != '3') {
             return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
         }
         if (publishType == '2') {

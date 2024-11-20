@@ -113,8 +113,8 @@ const GetArticleDataNotSchedule = async (req, res) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const { text, html, link, title } = await dissbotFetchArticle(url)
-    console.log('html',html)
-    console.log('text',text)
+    // console.log('html',html)
+    // console.log('text',text)
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
@@ -239,7 +239,13 @@ const launchSearch = async (req, res) => {
     console.log('publishType',publishType)
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
-            const articleUrlsArray = await Scrap(j)
+            let articleUrlsArray
+            try{
+                articleUrlsArray = await Scrap(j)
+            }
+            catch{
+                return res.status(400).json({message:`${j} is not a valid RSS Feed`})
+            }
             for (let p of articleUrlsArray) {
                 const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
                 if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {

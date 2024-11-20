@@ -3,6 +3,8 @@ const cheerio = require('cheerio');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAi = require('openai')
+const extractt = require('article-parser')
+
 require('dotenv').config()
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1']
@@ -123,20 +125,33 @@ async function rewriteOrSummaryHtml(prompt, html, model) {
 }
 
 const dissbotFetchArticle = async (url) => {
-    const token = process.env.DISSBOT_API
-    const cheerio = require('cheerio');
-    const readability = require('node-readability');
+    // const token = process.env.DISSBOT_API
+    // const cheerio = require('cheerio');
+    // const readability = require('node-readability');
+    let content
+    let title
+    try{
+        const data=await extractt.extract(url)
+        content=data.content
+        title=data.title
 
+    }
+    catch{
+        console.log('error here')
+        return {error:"no page exists"}
+    }
     return await new Promise((resolve, reject) => {
-        readability(url, function (err, article) {
-            if (err) {
-                console.log('error', url)
-                resolve({ error: "no page exists" })
-            } else {
-                const text = extractTextFromHTML(article.content);
-                resolve({ html: article.content, link: url, text, title: article.title })
-            }
-        });
+        // readability(url, function (err, article) {
+        //     if (err) {
+        //         console.log('error', url)
+        //         resolve({ error: "no page exists" })
+        //     } else {
+        //         const text = extractTextFromHTML(article.content);
+        //         resolve({ html: article.content, link: url, text, title: article.title })
+        //     }
+        // });
+        const text = extractTextFromHTML(content);
+        resolve({ html: content, link: url, text, title: title })
     })
 
 

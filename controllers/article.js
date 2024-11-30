@@ -112,8 +112,6 @@ const getPublishedArticle = async (req, res) => {
     return res.status(400).json({ message: "Id Doesnt Exist" })
 }
 
-
-
 const GetArticleDataNotSchedule = async (req, res) => {
     const validateResult = validationResult(req)
     if (!validateResult.isEmpty()) {
@@ -151,7 +149,6 @@ Replace [article domain] with the actual domain from which the article is source
     }
     return res.status(400).json({ message: "Article Has Low Relevance Score" })
 }
-
 
 const DeleteArticle = async (req, res) => {
     const validateResult = validationResult(req)

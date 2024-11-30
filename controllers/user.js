@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const {userModel} = require('../db-models')
+const {userModel, scheduleModel} = require('../db-models')
 const bcrypt=require('bcrypt')
 const { verifyToken } = require('../utils')
 
@@ -39,6 +39,7 @@ const searchUser = async (req, res) => {
 const deleteUser=async (req, res) => {
     const { id } = req.query
     const deleteUser = await userModel.deleteOne({ _id: id })
+    const deleteSchedule=await scheduleModel.deleteOne({userId:id})
     return res.json({
         message: "Success",
         data: deleteUser

@@ -208,8 +208,15 @@ const updatePublishedArticle = async (req, res) => {
         const wordpressDomain = domains[getPublishedData.domain]
         const article = req.body.content
         req.body.content = article
+        let deleted=false
+        if(getPublishedData.articleImage){
+            if(!req.body.content.includes(getPublishedData.articleImage)){
+                await DeleteFromBucket(getPublishedData.articleImage)
+                deleted=true
+            }
+        }
         const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
-        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article, title: req.body.title } })
+        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article, title: req.body.title,articleImage:deleted?null:getPublishedData.articleImage } })
         return res.json({ data: updateFromDB })
     }
     return res.status(400).json({ message: "Id Doesnt Exist" })

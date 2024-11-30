@@ -39,6 +39,8 @@ cron.schedule('* * * * *', async () => {
             const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, userId, domain: wordpressDomain, lowRelevanceArticles, periodicity } = e
             const currentDate = moment().format("YYYY-MM-DD")
             const nextDate = moment(new Date(timeOfCheck)).format("YYYY-MM-DD")
+            console.log('currentDate',currentDate,'current hour',moment().hour(),'current minute',moment().minute())
+            console.log('Database Date',nextDate,'current hour',periodicity.hour,'current minute',periodicity.minute)
             if ((currentDate == nextDate) && moment().hour() == periodicity.hour && moment().minute() == periodicity.minute) {
                 for (let j of urls) {
                     const articleUrlsArray = await Scrap(j)

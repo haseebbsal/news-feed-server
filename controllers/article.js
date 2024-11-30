@@ -1,5 +1,5 @@
 const { validationResult, check } = require("express-validator")
-const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage } = require("../utils")
+const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket } = require("../utils")
 const { scheduleModel, publishedArticleModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
@@ -7,6 +7,7 @@ const { default: axios } = require("axios")
 require('dotenv').config()
 const OpenAi = require('openai')
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
+
 
 
 
@@ -19,16 +20,24 @@ const publishArticle = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    const { title, domain, article, articleUrl, publishType } = req.body
+    let { title, domain, article, articleUrl, publishType, articleImage } = req.body
     const domainToPublishTo = domains[domain]
+    // console.log('article image',articleImage)
+    const { url, key } = await SaveToBucket(articleImage)
+    const imgStart = article.indexOf("<img")
+    const sliceTheArticle = article.slice(imgStart)
+    const indexOfSrc = sliceTheArticle.indexOf("src=")
+    const urlToReplace=article.slice(imgStart + indexOfSrc + 4).split(" ")[0]
+    const content = article.replace(urlToReplace, url)
     const payload = {
         title,
         "status": "publish",
-        content: article
+        content
     }
+    articleImage = key
     const publish = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
     const articleId = publish.data.id
-    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType })
+    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType, articleImage })
     res.json({ data: domains[domain] })
 
 }
@@ -103,6 +112,8 @@ const getPublishedArticle = async (req, res) => {
     return res.status(400).json({ message: "Id Doesnt Exist" })
 }
 
+
+
 const GetArticleDataNotSchedule = async (req, res) => {
     const validateResult = validationResult(req)
     if (!validateResult.isEmpty()) {
@@ -118,7 +129,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
-        const rewriteImage = await recursionGenerateImage(title)
+        let rewriteImage = await recursionGenerateImage(title)
         const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
 
 Remove all images from the HTML content, except for the image with the following URL: ${rewriteImage}, which should be included in the body of the content.
@@ -136,10 +147,11 @@ Replace [article domain] with the actual domain from which the article is source
         const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
         const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
-        return res.json({ relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, summary: summaryHtml, original: html, title, link })
+        return res.json({ relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, summary: summaryHtml, original: html, title, link, articleImage: rewriteImage })
     }
     return res.status(400).json({ message: "Article Has Low Relevance Score" })
 }
+
 
 const DeleteArticle = async (req, res) => {
     const validateResult = validationResult(req)
@@ -152,6 +164,10 @@ const DeleteArticle = async (req, res) => {
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
         const deleteFromWordPress = await axios.delete(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`)
+        if(getPublishedData.articleImage){
+            await DeleteFromBucket(getPublishedData.articleImage)
+            console.log('deleted from bucket')
+        }
         const deleteFromDB = await publishedArticleModel.deleteOne({ articleId: id })
         return res.json({ data: deleteFromDB })
     }
@@ -174,7 +190,7 @@ const getAllPublishedArticles = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const totalDocuments = await publishedArticleModel.find({ userId: userId }).countDocuments()
-    const getAllPublishedForUser = await publishedArticleModel.find({ userId: userId }).skip(skip).limit(limit).sort({createdAt:-1})
+    const getAllPublishedForUser = await publishedArticleModel.find({ userId: userId }).skip(skip).limit(limit).sort({ createdAt: -1 })
     return res.json({ data: getAllPublishedForUser, page, total: totalDocuments, nextPage: totalDocuments > numberOfDocumentsToReturn ? page + 1 : 0 })
 }
 
@@ -190,8 +206,8 @@ const updatePublishedArticle = async (req, res) => {
     console.log(req.body.content)
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
-        const article=req.body.content
-        req.body.content=article
+        const article = req.body.content
+        req.body.content = article
         const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
         const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article, title: req.body.title } })
         return res.json({ data: updateFromDB })
@@ -252,8 +268,8 @@ const launchSearch = async (req, res) => {
     const userId = accessTokenData.user._id
     const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity } = await scheduleModel.findOne({ userId })
     console.log('publishType', publishType)
-    let totalPublished=0
-    let totalArticles=0
+    let totalPublished = 0
+    let totalArticles = 0
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
@@ -263,17 +279,17 @@ const launchSearch = async (req, res) => {
             catch {
                 return res.status(400).json({ message: `${j} is not a valid RSS Feed` })
             }
-            totalArticles+=articleUrlsArray.length
+            totalArticles += articleUrlsArray.length
             for (let p of articleUrlsArray) {
                 const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
                 if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
-                    const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link } = await new Promise(async (resolvee, reject) => {
+                    const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link,rewriteImage } = await new Promise(async (resolvee, reject) => {
 
                         resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType))
                     })
                     if (!message) {
 
-                        totalPublished+=1
+                        totalPublished += 1
                         if (original) {
                             const payload = { title, "status": "publish", content: original }
                             const domain = domains[wordpressDomain]
@@ -300,7 +316,7 @@ const launchSearch = async (req, res) => {
                             const domain = domains[wordpressDomain]
                             const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
                             const { id } = uploadingToDomain.data
-                            const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2' })
+                            const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2' ,articleImage:rewriteImage})
                             console.log('published Rewritten Article', publishArticle._id)
                             console.log('uploaded to wordpress', uploadingToDomain.message)
                         }
@@ -312,7 +328,7 @@ const launchSearch = async (req, res) => {
             }
         }
 
-        return res.json({ data: "Search Completed" ,totalPublished,totalArticles})
+        return res.json({ data: "Search Completed", totalPublished, totalArticles })
     }
     return res.status(400).json({ message: "Urls and Keywords Are Required To Search" })
 }

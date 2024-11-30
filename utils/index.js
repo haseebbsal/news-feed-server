@@ -8,6 +8,18 @@ const extractt = require('article-parser')
 require('dotenv').config()
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1']
+const nanoidd = import('nanoid')
+const S3 = require('@aws-sdk/client-s3')
+const s3Client = new S3.S3({
+    forcePathStyle: false, // Configures to use subdomain/virtual calling format.
+    endpoint: "https://nyc3.digitaloceanspaces.com",
+    region: "nyc3",
+    credentials: {
+        accessKeyId: process.env.spaces_access,
+        secretAccessKey: process.env.spaces_secret
+    }
+})
+
 
 const domains = {
     '1': "https://news.rias-aero.com"
@@ -38,7 +50,17 @@ const publishType = {
     "1": "Original",
     "2": "Rewrite",
     "3": "Summary",
-    "4":"Custom"
+    "4": "Custom"
+}
+
+const DeleteFromBucket=async (url)=>{
+    const params = {
+        Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
+        Key: url , // Object key, referenced whenever you want to access this file later.
+    };
+
+    await s3Client.send(new S3.DeleteObjectCommand(params))
+    return 'deleted'
 }
 
 async function GetArticleData(p, keywords, relevanceIndex, publishType) {
@@ -194,6 +216,19 @@ async function recursionGenerateImage(title) {
     }
 }
 
+async function SaveToBucket(url) {
+    const key = (await nanoidd).nanoid(9)+'.png'
+    let image = await axios.get(url, { responseType: 'arraybuffer' });
+    let returnedB64 = Buffer.from(image.data)
+    const params = {
+        Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
+        Key: key , // Object key, referenced whenever you want to access this file later.
+        Body: returnedB64, // The object's contents. This variable is an object, not a string.
+        ACL: "public-read", // Defines ACL permissions, such as private or public.
+    };
+    const sendToBucket=await s3Client.send(new S3.PutObjectCommand(params))
+    return {url:process.env.bucket_url+key,key}
+}
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
@@ -206,8 +241,8 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
             }
             if (publishType == '2') {
-                const rewriteImage = await recursionGenerateImage(title)
-                console.log('imaggeeee', rewriteImage)
+                const {url,key}=await SaveToBucket(await recursionGenerateImage(title))
+                let rewriteImage = url
                 const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
 
                 Remove all images from the HTML content, except for the image with the following URL: ${rewriteImage}, which should be included in the body of the content.
@@ -216,7 +251,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
                 `
                 const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
-                return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link }
+                return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link ,rewriteImage:key}
             }
             const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
                 
@@ -240,4 +275,4 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
 
 
 
-module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage }
+module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage,SaveToBucket,DeleteFromBucket }

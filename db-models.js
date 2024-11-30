@@ -104,6 +104,9 @@ const publishedArticlesSchema=new mongoose.Schema(
             type:String,
             enum:['1','2','3','4'],
             required:true
+        },
+        articleImage:{
+            type:String
         }
     },{timestamps:true}
 )

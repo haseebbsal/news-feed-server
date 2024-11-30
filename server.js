@@ -45,7 +45,7 @@ cron.schedule('* * * * *', async () => {
                     for (let p of articleUrlsArray) {
                         const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
                         if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
-                            const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link } = await new Promise(async (resolvee, reject) => {
+                            const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link,rewriteImage } = await new Promise(async (resolvee, reject) => {
 
                                 resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType))
                             })
@@ -76,7 +76,7 @@ cron.schedule('* * * * *', async () => {
                                     const domain = domains[wordpressDomain]
                                     const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
                                     const { id } = uploadingToDomain.data
-                                    const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2' })
+                                    const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2',articleImage:rewriteImage })
                                     console.log('published Rewritten Article', publishArticle._id)
                                     console.log('uploaded to wordpress', uploadingToDomain.message)
                                 }

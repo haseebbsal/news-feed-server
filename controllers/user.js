@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 const {userModel} = require('../db-models')
 const { verifyToken } = require('../utils')
+const bcrypt=require('bcrypt')
 
 const individualUser = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
@@ -73,7 +74,16 @@ const updateRollUser=async (req,res)=>{
     }
 }
 
+const changePasswordUser=async(req,res)=>{
+    const {id}=req.query
+    const {password}=req.body
+    const saltRounds = 10;
+    const newPassword = await bcrypt.hash(password, saltRounds)
+    const updateUser=await userModel.updateOne({_id:id},{$set:{password:newPassword}})
+    return res.json(updateUser)
+}
+
 
 module.exports = {
-    individualUser,searchUser,deleteUser,blockUser,updateRollUser
+    individualUser,searchUser,deleteUser,blockUser,updateRollUser,changePasswordUser
 }

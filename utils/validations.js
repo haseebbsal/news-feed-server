@@ -38,7 +38,7 @@ const postScheduleValidation=[body('relevanceIndex').notEmpty().withMessage('Rel
     return true
 })]
 
-const publishArticleValidation=[body('title').notEmpty().withMessage('Title Is Required').isString().withMessage('Invalid Title'),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number'),body('article').notEmpty().withMessage('Article is required').isString().withMessage('Invalid Article Type'),body('articleUrl').notEmpty().withMessage('Article Url is required').isString().withMessage('Invalid Article Url Type'),body('publishType').notEmpty().withMessage('Publish Type is Required').isNumeric().withMessage('Invalid Publish Type')]
+const publishArticleValidation=[body('title').notEmpty().withMessage('Title Is Required').isString().withMessage('Invalid Title'),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number'),body('article').notEmpty().withMessage('Article is required').isString().withMessage('Invalid Article Type'),body('articleUrl').optional().isString().withMessage('Invalid Article Url Type'),body('publishType').notEmpty().withMessage('Publish Type is Required').isNumeric().withMessage('Invalid Publish Type')]
 
 const deleteArticleValidation=[query('id').notEmpty().withMessage('Id is required').isString().withMessage('Invalid Id Type')]
 

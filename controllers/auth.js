@@ -42,9 +42,9 @@ const login = async (req, res) => {
                 refreshToken
             })
         }
-        return res.status(400).json({ message: "Incorrect Password" })
+        return res.status(400).json({ message: "Invalid Credentials" })
     }
-    return res.status(400).json({ message: "Incorrect Email" })
+    return res.status(400).json({ message: "Invalid Credentials" })
 }
 
 const register = async (req, res) => {

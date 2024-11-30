@@ -10,7 +10,7 @@ const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1']
 
 const domains = {
-    '1': "https://rias-aero.com"
+    '1': "https://news.rias-aero.com"
 }
 
 function extractTextFromHTML(html) {
@@ -38,6 +38,7 @@ const publishType = {
     "1": "Original",
     "2": "Rewrite",
     "3": "Summary",
+    "4":"Custom"
 }
 
 async function GetArticleData(p, keywords, relevanceIndex, publishType) {
@@ -121,7 +122,7 @@ async function rewriteOrSummaryHtml(prompt, html, model) {
             },
         ],
     });
-    return completion.choices[0].message.content.replace('\n', '').replace('##', '').replace('```', '').replace('```html', '').replace('html', '')
+    return completion.choices[0].message.content.replaceAll('\n', '').replaceAll('##', '').replaceAll('```', '').replaceAll('```html', '')
 }
 
 const dissbotFetchArticle = async (url) => {
@@ -130,15 +131,15 @@ const dissbotFetchArticle = async (url) => {
     // const readability = require('node-readability');
     let content
     let title
-    try{
-        const data=await extractt.extract(url)
-        content=data.content
-        title=data.title
+    try {
+        const data = await extractt.extract(url)
+        content = data.content
+        title = data.title
 
     }
-    catch{
+    catch {
         console.log('error here')
-        return {error:"no page exists"}
+        return { error: "no page exists" }
     }
     return await new Promise((resolve, reject) => {
         // readability(url, function (err, article) {
@@ -171,6 +172,28 @@ const dissbotFetchArticle = async (url) => {
     // return { text, html, link, title }
 }
 
+const generateImage = async (title) => {
+    const prompt = `"${title}" — Please generate visuals that are relevant to the topic or theme of the title. Do not generate images of people under any circumstances. Instead, focus on creating content that directly reflects the subject matter or theme. The generated content should be appropriate, related to the title, and comply with all safety and security guidelines.`
+    const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        style: "natural"
+    });
+    const image_url = response.data[0].url;
+    return image_url
+}
+
+async function recursionGenerateImage(title) {
+    try {
+        return await generateImage(title)
+    }
+    catch {
+        return await recursionGenerateImage(title)
+    }
+}
+
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
@@ -183,12 +206,25 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
             }
             if (publishType == '2') {
-                const rewriteImage = await generateImage(title)
-                const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant. You must remove all images from the HTML content. The only image that should remain is the one with the following URL, which should be included in the body of the content: ${rewriteImage}. Additionally, you should include the following URL at the bottom of the article: ${link}.`
+                const rewriteImage = await recursionGenerateImage(title)
+                console.log('imaggeeee', rewriteImage)
+                const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
+
+                Remove all images from the HTML content, except for the image with the following URL: ${rewriteImage}, which should be included in the body of the content.
+                At the very end of the article, include the following note in the exact specified format:
+                "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
+                Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+                `
                 const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
                 return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link }
             }
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+                
+            The summary should not be short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
+            Remove all images from the HTML content, regardless of their relevance to the summary.
+            At the very end of the article, on a separate line, include the following note in the exact specified format:
+            <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
+            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
 
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
             return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }
@@ -201,18 +237,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
 
 }
 
-const generateImage = async (title) => {
-    const prompt = `"${title}" — Do not generate images of people under any circumstances.Instead, generate visuals that are relevant to the topic or theme of the title.The generated content should be appropriate and related to the subject matter, without featuring any individuals.`
-    const response = await openai.images.generate({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        style: "natural"
-    });
-    const image_url = response.data[0].url;
-    return image_url
-}
 
 
-module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData }
+
+module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage }

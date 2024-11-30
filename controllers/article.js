@@ -1,5 +1,5 @@
 const { validationResult, check } = require("express-validator")
-const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap } = require("../utils")
+const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage } = require("../utils")
 const { scheduleModel, publishedArticleModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
@@ -29,7 +29,7 @@ const publishArticle = async (req, res) => {
     const publish = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
     const articleId = publish.data.id
     const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType })
-    res.json({ data: addToPublishDb })
+    res.json({ data: domains[domain] })
 
 }
 
@@ -118,9 +118,21 @@ const GetArticleDataNotSchedule = async (req, res) => {
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
-        const rewriteImage = await generateImage(title)
-        const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant. You must remove all images from the HTML content. The only image that should remain is the one with the following URL, which should be included in the body of the content: ${rewriteImage}. Additionally, you should include the following URL at the bottom of the article: ${link}.`
-        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a concise summary of the text content within the HTML, while ensuring the content is well-structured and relevant. All images should be removed from the HTML content, regardless of their relevance to the summary. Additionally, you should include the following URL at the bottom of the article: ${link}. Please return the summary in HTML format, maintaining the overall structure of the content.`
+        const rewriteImage = await recursionGenerateImage(title)
+        const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
+
+Remove all images from the HTML content, except for the image with the following URL: ${rewriteImage}, which should be included in the body of the content.
+At the very end of the article, include the following note in the exact specified format:
+"Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
+Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+`
+        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+
+The summary should not be short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
+Remove all images from the HTML content, regardless of their relevance to the summary.
+At the very end of the article, on a separate line, include the following note in the exact specified format:
+<p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
+Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
         const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
         const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
@@ -162,7 +174,7 @@ const getAllPublishedArticles = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const totalDocuments = await publishedArticleModel.find({ userId: userId }).countDocuments()
-    const getAllPublishedForUser = await publishedArticleModel.find({ userId: userId }).skip(skip).limit(limit)
+    const getAllPublishedForUser = await publishedArticleModel.find({ userId: userId }).skip(skip).limit(limit).sort({createdAt:-1})
     return res.json({ data: getAllPublishedForUser, page, total: totalDocuments, nextPage: totalDocuments > numberOfDocumentsToReturn ? page + 1 : 0 })
 }
 
@@ -175,10 +187,13 @@ const updatePublishedArticle = async (req, res) => {
 
     const { id } = req.query
     const getPublishedData = await publishedArticleModel.findOne({ articleId: id })
+    console.log(req.body.content)
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
+        const article=req.body.content
+        req.body.content=article
         const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
-        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article: req.body.content, title: req.body.title } })
+        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article, title: req.body.title } })
         return res.json({ data: updateFromDB })
     }
     return res.status(400).json({ message: "Id Doesnt Exist" })
@@ -236,16 +251,19 @@ const launchSearch = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity } = await scheduleModel.findOne({ userId })
-    console.log('publishType',publishType)
+    console.log('publishType', publishType)
+    let totalPublished=0
+    let totalArticles=0
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
-            try{
+            try {
                 articleUrlsArray = await Scrap(j)
             }
-            catch{
-                return res.status(400).json({message:`${j} is not a valid RSS Feed`})
+            catch {
+                return res.status(400).json({ message: `${j} is not a valid RSS Feed` })
             }
+            totalArticles+=articleUrlsArray.length
             for (let p of articleUrlsArray) {
                 const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
                 if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
@@ -255,7 +273,7 @@ const launchSearch = async (req, res) => {
                     })
                     if (!message) {
 
-
+                        totalPublished+=1
                         if (original) {
                             const payload = { title, "status": "publish", content: original }
                             const domain = domains[wordpressDomain]
@@ -294,7 +312,7 @@ const launchSearch = async (req, res) => {
             }
         }
 
-        return res.json({ data: "Search Completed" })
+        return res.json({ data: "Search Completed" ,totalPublished,totalArticles})
     }
     return res.status(400).json({ message: "Urls and Keywords Are Required To Search" })
 }

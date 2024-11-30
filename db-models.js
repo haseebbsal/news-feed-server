@@ -70,7 +70,7 @@ const scheduleSchema=new mongoose.Schema({
     },
     publishType:{
         type:String,
-        enum:['1','2','3'],
+        enum:['1','2','3','4'],
         default:'2'
     }
 },{timestamps:true})
@@ -90,8 +90,7 @@ const publishedArticlesSchema=new mongoose.Schema(
             required:true
         },
         articleUrl:{
-            type:String,
-            required:true
+            type:String
         },
         articleId:{
             type:Number,
@@ -103,7 +102,7 @@ const publishedArticlesSchema=new mongoose.Schema(
         },
         publishType:{
             type:String,
-            enum:['1','2','3'],
+            enum:['1','2','3','4'],
             required:true
         }
     },{timestamps:true}

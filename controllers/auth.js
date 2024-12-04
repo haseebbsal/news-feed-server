@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const {userModel, scheduleModel} = require('../db-models')
+const { userModel, scheduleModel } = require('../db-models')
+const speakeasy = require('speakeasy');
+const { sendEmail } = require('../utils');
+
+
 
 const login = async (req, res) => {
     const { email, password } = req.body
@@ -55,21 +59,43 @@ const register = async (req, res) => {
         if (!checkEmailExists) {
             const saltRounds = 10;
             const newPassword = await bcrypt.hash(password, saltRounds)
-            const createNewUser = await userModel.create({ email, username, password: newPassword })
-            const createScheduleForUser=await scheduleModel.create({userId:createNewUser._id})
+            const generateVerifyCode = speakeasy.generateSecret({ length: 4 })
+            const code = speakeasy.totp({
+                secret: generateVerifyCode.base32,
+                encoding: 'base32'
+            });
+            const sendEmailToClient = sendEmail(email, code,username)
+            console.log('email sent', sendEmailToClient)
+            const createNewUser = await userModel.create({ email, username, password: newPassword, verificationCode: code, isApproved: false })
+            const createScheduleForUser = await scheduleModel.create({ userId: createNewUser._id })
             return res.status(200).json(createNewUser)
+        }
+        if(!checkUsernameExists.isApproved){
+            return res.json({message:"User is not approved"})
         }
         return res.status(400).json({ message: 'email exists already' })
     }
+    if(!checkUsernameExists.isApproved){
+        return res.json({message:"User is not approved"})
+    }
     return res.status(400).json({ message: 'username exists already' })
+}
 
 
+const verifyCode = async (req, res) => {
+    const { code, username } = req.body
+    const checkUsernameExists = await userModel.findOne({ username })
+    if (checkUsernameExists.verificationCode == code) {
+        await userModel.updateOne({ username }, { $set: { isApproved: true, verificationCode: 0 } })
+        return res.json({ message: "Code Sent" })
+    }
+    return res.status(400).json({ message: 'Invalid Verification Code' })
 }
 
 const logout = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     try {
-        const accessTokenData=verifyToken(accessToken)
+        const accessTokenData = verifyToken(accessToken)
         const userId = accessTokenData.user._id
         await userModel.updateOne({ _id: userId }, { $set: { refreshToken: "" } })
         return res.json({
@@ -83,10 +109,30 @@ const logout = async (req, res) => {
     }
 }
 
+
+const resendVerification = async (req, res) => {
+    const { username } = req.body
+    try {
+        const generateVerifyCode = speakeasy.generateSecret({ length: 4 })
+        const code = speakeasy.totp({
+            secret: generateVerifyCode.base32,
+            encoding: 'base32'
+        });
+        const {email}=await userModel.findOne({username})
+        await userModel.updateOne({username},{$set:{verificationCode:code}})
+        const sendEmailToClient = sendEmail(email, code,username)
+        console.log('send emailll',sendEmailToClient)
+        return res.json({ message: "Sent New Code" })
+    }
+    catch{
+        return res.status(400).json({message:"Error In Sending Verification Code"})
+    }
+}
+
 const newTokens = async (req, res) => {
     const refreshToken = req.headers.authorization.split(' ')[1]
     try {
-        const refreshTokenData=verifyToken(refreshToken)
+        const refreshTokenData = verifyToken(refreshToken)
         const userId = refreshTokenData.user._id
         const findUser = await userModel.findOne({ _id: userId })
         if (findUser.refreshToken == refreshToken) {
@@ -135,5 +181,5 @@ const newTokens = async (req, res) => {
 }
 
 module.exports = {
-    login,register,logout,newTokens
+    login, register, logout, newTokens, verifyCode,resendVerification
 }

@@ -25,6 +25,13 @@ const userSchema = new mongoose.Schema({
     role: {
         type: Number,
         default:1
+    },
+    verificationCode:{
+        type:Number,
+    },
+    isApproved:{
+        type:Boolean,
+        required:true
     }
 })
 

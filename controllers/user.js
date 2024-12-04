@@ -23,9 +23,9 @@ const searchUser = async (req, res) => {
     const limit = 10
     const nextPage = parseInt(page) * limit
     const skip = (parseInt(page) - 1) * limit
-    const count = await userModel.find({ username: { $regex: `${name}`, $options: "i" },_id:{$ne: userId} }).countDocuments()
+    const count = await userModel.find({ username: { $regex: `${name}`, $options: "i" },_id:{$ne: userId} ,isApproved:true}).countDocuments()
     // console.log('count', count)
-    const user = await userModel.find({ username: { $regex: `${name}`, $options: "i" },_id:{$ne: userId} }, { refreshToken: 0, password: 0 }).limit(limit).skip(skip)
+    const user = await userModel.find({ username: { $regex: `${name}`, $options: "i" },_id:{$ne: userId},isApproved:true }, { refreshToken: 0, password: 0 }).limit(limit).skip(skip)
     res.json({
         message: "Success",
         data: {

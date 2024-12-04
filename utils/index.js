@@ -4,7 +4,7 @@ const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAi = require('openai')
 const extractt = require('article-parser')
-
+const nodemailer = require('nodemailer')
 require('dotenv').config()
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1']
@@ -53,10 +53,10 @@ const publishType = {
     "4": "Custom"
 }
 
-const DeleteFromBucket=async (url)=>{
+const DeleteFromBucket = async (url) => {
     const params = {
         Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
-        Key: url , // Object key, referenced whenever you want to access this file later.
+        Key: url, // Object key, referenced whenever you want to access this file later.
     };
 
     await s3Client.send(new S3.DeleteObjectCommand(params))
@@ -217,17 +217,17 @@ async function recursionGenerateImage(title) {
 }
 
 async function SaveToBucket(url) {
-    const key = (await nanoidd).nanoid(9)+'.png'
+    const key = (await nanoidd).nanoid(9) + '.png'
     let image = await axios.get(url, { responseType: 'arraybuffer' });
     let returnedB64 = Buffer.from(image.data)
     const params = {
         Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
-        Key: key , // Object key, referenced whenever you want to access this file later.
+        Key: key, // Object key, referenced whenever you want to access this file later.
         Body: returnedB64, // The object's contents. This variable is an object, not a string.
         ACL: "public-read", // Defines ACL permissions, such as private or public.
     };
-    const sendToBucket=await s3Client.send(new S3.PutObjectCommand(params))
-    return {url:process.env.bucket_url+key,key}
+    const sendToBucket = await s3Client.send(new S3.PutObjectCommand(params))
+    return { url: process.env.bucket_url + key, key }
 }
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
@@ -241,7 +241,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 return { relevanceIndex: relevanceIndexGemini, original: html, title, link }
             }
             if (publishType == '2') {
-                const {url,key}=await SaveToBucket(await recursionGenerateImage(title))
+                const { url, key } = await SaveToBucket(await recursionGenerateImage(title))
                 let rewriteImage = url
                 const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
 
@@ -251,7 +251,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
                 `
                 const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
-                return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link ,rewriteImage:key}
+                return { relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, title, link, rewriteImage: key }
             }
             const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
                 
@@ -273,6 +273,145 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
 }
 
 
+function emailTemplate(subject, userName, code, text = "Welcome To Search Please Enter The Code Provided.") {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          background-color: #f4f4f4;
+      }
+      .container {
+          width: 100%;
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          padding: 20px;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          border-radius: 10px;
+      }
+      .header {
+          text-align: center;
+      }
+      .header-text {
+          text-align: center;
+          border: 2px solid #ff6f61;
+          border-radius: 20px;
+          background-color: #fff0f0;
+
+      }
+      .header img {
+          max-width: 150px;
+      }
+      .header h1 {
+          font-size: 24px;
+          color: #333333;
+          border-radius: 5px;
+      }
+
+      .content {
+          padding: 20px 0;
+      }
+      .content h2 {
+          font-size: 20px;
+          color: #333333;
+      }
+      .content p {
+          font-size: 16px;
+          color: #666666;
+          line-height: 1.5;
+      }
+      .code-text{
+          color: #ff6f61;
+      }
+      .footer {
+          text-align: center;
+          padding: 20px 0;
+          background-color: #fff0f0;
+          border-radius: 20px;
+
+      }
+      .footer p {
+          font-size: 16px;
+          color: #666666;
+      }
+      .footer a {
+          font-size: 16px;
+          color: #ff6f61;
+          text-decoration: none;
+      }
+      .email__content__copyright__wrapper {
+          text-align: center;
+          margin-top: 30px;
+      }
+
+      .email__content__copyright__wrapper small {
+          color: #666666;
+          font-size: 12px;
+          opacity: 0.9;
+      }
+  </style>
+  <title>Riddle The City</title>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-text">
+      <h1>${subject}</h1>
+    </div>
+  </div>
+  <div class="content">
+    <h2>Hey ${userName}!</h2>
+    <p>${text}<br>
+      <span class="code-text">${code}</span>
+    </p>
+  </div>
+</div>
+</body>
+</html>`
+
+return html
+}
 
 
-module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage,SaveToBucket,DeleteFromBucket }
+
+async function sendEmail(email, code,username) {
+    var transport = nodemailer.createTransport({
+        host: "live.smtp.mailtrap.io",
+        port: 587,
+        auth: {
+            user: "api",
+            pass: process.env.mailtrap_pass
+        }
+    });
+
+    const sender = {
+        address: "no-reply@rias-aero.com",
+        name: "Welcome To Search",
+    };
+    const recipients = [
+        email,
+    ];
+
+    const sendEmail = await transport
+        .sendMail({
+            from: sender,
+            to: recipients,
+            subject: "Verify Your Email",
+            // attachments;
+            // text: "<p style='color:red;'>Congrats for sending test email with Mailtrap!</p>",
+            category: "Verify Email Category",
+            html: emailTemplate("Verify Your Email",username,code)
+
+        })
+
+    return sendEmail
+}
+
+
+module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail }

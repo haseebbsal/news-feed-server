@@ -403,8 +403,6 @@ async function sendEmail(email, code,username) {
             from: sender,
             to: recipients,
             subject: "Verify Your Email",
-            // attachments;
-            // text: "<p style='color:red;'>Congrats for sending test email with Mailtrap!</p>",
             category: "Verify Email Category",
             html: emailTemplate("Verify Your Email",username,code)
 

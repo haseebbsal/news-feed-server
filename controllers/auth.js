@@ -2,8 +2,7 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const { userModel, scheduleModel } = require('../db-models')
 const speakeasy = require('speakeasy');
-const { sendEmail } = require('../utils');
-
+const { sendEmail, verifyToken } = require('../utils');
 
 
 const login = async (req, res) => {

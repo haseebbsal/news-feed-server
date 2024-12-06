@@ -18,26 +18,29 @@ const publishArticle = async (req, res) => {
         return res.status(400).json({ data: errors })
     }
     const accessToken = req.headers.authorization.split(' ')[1]
+    console.log('im hereee')
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     let { title, domain, article, articleUrl, publishType, articleImage } = req.body
     const domainToPublishTo = domains[domain]
+    console.log('domain',domainToPublishTo)
     // console.log('article image',articleImage)
-    const { url, key } = await SaveToBucket(articleImage)
-    const imgStart = article.indexOf("<img")
-    const sliceTheArticle = article.slice(imgStart)
-    const indexOfSrc = sliceTheArticle.indexOf("src=")
-    const urlToReplace=article.slice(imgStart + indexOfSrc + 4).split(" ")[0]
-    const content = article.replace(urlToReplace, url)
+    // const { url, key } = await SaveToBucket(articleImage)
+    // const imgStart = article.indexOf("<img")
+    // const sliceTheArticle = article.slice(imgStart)
+    // const indexOfSrc = sliceTheArticle.indexOf("src=")
+    // const urlToReplace=article.slice(imgStart + indexOfSrc + 4).split(" ")[0]
+    // const content = article.replace(urlToReplace, url)
+    const content=article
     const payload = {
         title,
         "status": "publish",
         content
     }
-    articleImage = key
+    // articleImage = key
     const publish = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
     const articleId = publish.data.id
-    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType, articleImage })
+    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType })
     res.json({ data: domains[domain] })
 
 }

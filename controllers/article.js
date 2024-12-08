@@ -39,7 +39,7 @@ const publishArticle = async (req, res) => {
         console.log(files[0])
         const puttingThumbnail=await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`,formData)
     }
-    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
+    const addToPublishDb = await publishedArticleModel.create({ title, article:content, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
     res.json({ data: domains[domain] })
 
 }

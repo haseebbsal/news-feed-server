@@ -460,7 +460,7 @@ async function Manipulate(html) {
         x.attribs.src = url
     }
     const newHtml = $.html()
-    return { html, keys, files }
+    return { html:newHtml, keys, files }
 }
 
 

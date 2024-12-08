@@ -36,7 +36,7 @@ const postScheduleValidation=[body('relevanceIndex').notEmpty().withMessage('Rel
         throw new Error('Object Must Contain Only Hour And Minute Keys')
     }
     return true
-})]
+}),body('generateImages').notEmpty().withMessage('Generate Images Is Required').isBoolean().withMessage('Invalid Generate Images Type'),body('limit').notEmpty().withMessage('Limit is Required').isNumeric().withMessage('Invalid Limit Type')]
 
 const publishArticleValidation=[body('title').notEmpty().withMessage('Title Is Required').isString().withMessage('Invalid Title'),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number'),body('article').notEmpty().withMessage('Article is required').isString().withMessage('Invalid Article Type'),body('articleUrl').optional().isString().withMessage('Invalid Article Url Type'),body('publishType').notEmpty().withMessage('Publish Type is Required').isNumeric().withMessage('Invalid Publish Type')]
 

@@ -1,5 +1,5 @@
 const { validationResult, check } = require("express-validator")
-const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket } = require("../utils")
+const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket, Manipulate } = require("../utils")
 const { scheduleModel, publishedArticleModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
@@ -18,20 +18,13 @@ const publishArticle = async (req, res) => {
         return res.status(400).json({ data: errors })
     }
     const accessToken = req.headers.authorization.split(' ')[1]
-    console.log('im hereee')
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    let { title, domain, article, articleUrl, publishType, articleImage } = req.body
+    let { title, domain, article, articleUrl, publishType,  } = req.body
     const domainToPublishTo = domains[domain]
-    console.log('domain',domainToPublishTo)
-    // console.log('article image',articleImage)
-    // const { url, key } = await SaveToBucket(articleImage)
-    // const imgStart = article.indexOf("<img")
-    // const sliceTheArticle = article.slice(imgStart)
-    // const indexOfSrc = sliceTheArticle.indexOf("src=")
-    // const urlToReplace=article.slice(imgStart + indexOfSrc + 4).split(" ")[0]
-    // const content = article.replace(urlToReplace, url)
-    const content=article
+    console.log('domain', domainToPublishTo)
+    const { html, keys,files } = await Manipulate(article)
+    let content = html
     const payload = {
         title,
         "status": "publish",
@@ -40,7 +33,13 @@ const publishArticle = async (req, res) => {
     // articleImage = key
     const publish = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
     const articleId = publish.data.id
-    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType })
+    if(keys.length){
+        const formData=new FormData()
+        formData.append('file',files[0])
+        console.log(files[0])
+        const puttingThumbnail=await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`,formData)
+    }
+    const addToPublishDb = await publishedArticleModel.create({ title, article, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
     res.json({ data: domains[domain] })
 
 }
@@ -51,8 +50,9 @@ const scheduleArticle = async (req, res) => {
         const errors = validateResult.array().map((e) => e.msg)
         return res.status(400).json({ data: errors })
     }
-    let { keywords, domain, urls, relevanceIndex, timeOfCheck, publishType, periodicity } = req.body
+    let { keywords, domain, urls, relevanceIndex, timeOfCheck, publishType, periodicity,limit,generateImages } = req.body
 
+    // console.log('limit',limit,'generate',generateImages)
     let checkTime
     if (Number(timeOfCheck) == 1) {
         checkTime = moment().add(1, 'days');
@@ -82,8 +82,16 @@ const scheduleArticle = async (req, res) => {
     const token = req.headers.authorization.split(' ')[1]
     const { user } = verifyToken(token)
     try {
-        const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, timeOfCheck: checkTime, timeCheckType: timeOfCheck, publishType, periodicity, lowRelevanceArticles: [] } }, { upsert: true })
-        return res.json({ message: "Success", data: addToScheduledData })
+        const getCurrentCheckTime=await scheduleModel.findOne({userId:user._id})
+        const currentSavedCheckTime=getCurrentCheckTime.timeCheckType
+        if(currentSavedCheckTime!=Number(timeOfCheck)){
+            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, timeOfCheck: checkTime, timeCheckType: timeOfCheck, publishType, periodicity ,limit,generateImages} }, { upsert: true })
+            return res.json({ message: "Success", data: addToScheduledData })
+        }
+        else{
+            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, publishType, periodicity ,limit,generateImages} }, { upsert: true })
+            return res.json({ message: "Success", data: addToScheduledData })
+        }
     }
     catch (e) {
         console.log(e)
@@ -121,7 +129,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
         const errors = validateResult.array().map((e) => e.msg)
         return res.status(400).json({ data: errors })
     }
-    const { url, keywords, relevanceIndex } = req.body
+    const { url, keywords, relevanceIndex, generateImage } = req.body
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
     // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const { text, html, link, title } = await dissbotFetchArticle(url)
@@ -130,25 +138,49 @@ const GetArticleDataNotSchedule = async (req, res) => {
     const relevanceIndexGemini = await calculateRelevanceIndex(text, keywords)
     console.log('openAi', relevanceIndexGemini)
     if (relevanceIndexGemini >= relevanceIndex) {
-        let rewriteImage = await recursionGenerateImage(title)
-        const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
+        if (generateImage) {
+            let rewriteImage = await recursionGenerateImage(title)
+            const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user And Not Return Mark Down Content. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
+    
+    Remove all images from the HTML content and add An image with the following URL: ${rewriteImage}, which should be included in the body of the content.
+    At the very end of the article, include the following note in the exact specified format:
+    "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+    `
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+    
+    The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
+    Remove all images from the HTML content, regardless of their relevance to the summary.
+    At the very end of the article, on a separate line, include the following note in the exact specified format:
+    <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
+            const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
-Remove all images from the HTML content, except for the image with the following URL: ${rewriteImage}, which should be included in the body of the content.
-At the very end of the article, include the following note in the exact specified format:
-"Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
-Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
-`
-        const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+            const original = html + summaryHtml.slice(summaryHtml.indexOf('<p>Article has been taken from'))
+            return res.json({ relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, summary: summaryHtml, original, title, link })
+        }
+        else {
+            const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user And Not Return Mark Down Content. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
+    
+            Remove all images from the HTML content.
+            At the very end of the article, include the following note in the exact specified format:
+            "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
+            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+            `
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+            
+            The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
+            Remove all images from the HTML content, regardless of their relevance to the summary.
+            At the very end of the article, on a separate line, include the following note in the exact specified format:
+            <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
+            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
+            const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
-The summary should not be short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
-Remove all images from the HTML content, regardless of their relevance to the summary.
-At the very end of the article, on a separate line, include the following note in the exact specified format:
-<p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
-Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
-        const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
-        const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
-
-        return res.json({ relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, summary: summaryHtml, original: html, title, link, articleImage: rewriteImage })
+            const original = html + summaryHtml.slice(summaryHtml.indexOf('<p>Article has been taken from'))
+            return res.json({ relevanceIndex: relevanceIndexGemini, rewritten: rewriteHtml, summary: summaryHtml, original, title, link })
+        }
     }
     return res.status(400).json({ message: "Article Has Low Relevance Score" })
 }
@@ -164,7 +196,7 @@ const DeleteArticle = async (req, res) => {
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
         const deleteFromWordPress = await axios.delete(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`)
-        if(getPublishedData.articleImage){
+        if (getPublishedData.articleImage.length) {
             await DeleteFromBucket(getPublishedData.articleImage)
             console.log('deleted from bucket')
         }
@@ -203,20 +235,23 @@ const updatePublishedArticle = async (req, res) => {
 
     const { id } = req.query
     const getPublishedData = await publishedArticleModel.findOne({ articleId: id })
-    console.log(req.body.content)
+    // console.log(req.body.content)
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
-        const article = req.body.content
-        req.body.content = article
-        let deleted=false
-        if(getPublishedData.articleImage){
-            if(!req.body.content.includes(getPublishedData.articleImage)){
+        const { html, keys,files } = await Manipulate(req.body.content)
+        req.body.content = html
+        let deleted = false
+        if (getPublishedData.articleImage.length) {
                 await DeleteFromBucket(getPublishedData.articleImage)
-                deleted=true
-            }
+                deleted = true
+        }
+        if (keys.length) {
+            const formData = new FormData()
+            formData.append('file', files[0])
+            const puttingThumbnail = await axios.postForm(`${wordpressDomain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
         }
         const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
-        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article, title: req.body.title,articleImage:deleted?null:getPublishedData.articleImage } })
+        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article:html, title: req.body.title, articleImage: deleted ? keys : getPublishedData.articleImage } })
         return res.json({ data: updateFromDB })
     }
     return res.status(400).json({ message: "Id Doesnt Exist" })
@@ -273,10 +308,11 @@ const launchSearch = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity } = await scheduleModel.findOne({ userId })
+    const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity ,limit,generateImages} = await scheduleModel.findOne({ userId })
     console.log('publishType', publishType)
     let totalPublished = 0
     let totalArticles = 0
+    let allArticles=[]
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
@@ -287,55 +323,61 @@ const launchSearch = async (req, res) => {
                 return res.status(400).json({ message: `${j} is not a valid RSS Feed` })
             }
             totalArticles += articleUrlsArray.length
-            for (let p of articleUrlsArray) {
-                const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
-                if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
-                    const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link,rewriteImage } = await new Promise(async (resolvee, reject) => {
+            allArticles=[...allArticles,...articleUrlsArray]
+        }
+        for (let p of allArticles.slice(0,limit)) {
+            const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
+            if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
+                const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage,files } = await new Promise(async (resolvee, reject) => {
 
-                        resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType))
-                    })
-                    if (!message) {
+                    resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType,generateImages))
+                })
+                if (!message) {
 
-                        totalPublished += 1
-                        if (original) {
-                            const payload = { title, "status": "publish", content: original }
-                            const domain = domains[wordpressDomain]
-                            const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                            const { id } = uploadingToDomain.data
-                            const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1' })
-                            console.log('published Original Article', publishArticle._id)
-                            console.log('uploaded to wordpress', uploadingToDomain.message)
+                    totalPublished += 1
+                    if (original) {
+                        const payload = { title, "status": "publish", content: original }
+                        const domain = domains[wordpressDomain]
+                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        const { id } = uploadingToDomain.data
+                        const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1' })
+                        console.log('published Original Article', publishArticle._id)
+                        console.log('uploaded to wordpress', uploadingToDomain.message)
 
-                        }
-                        else if (summary) {
-                            const payload = { title, "status": "publish", content: summary }
-                            const domain = domains[wordpressDomain]
-                            const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                            const { id } = uploadingToDomain.data
-                            const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
-                            console.log('published Summary Article', publishArticle._id)
-                            console.log('uploaded to wordpress', uploadingToDomain.message)
+                    }
+                    else if (summary) {
+                        const payload = { title, "status": "publish", content: summary }
+                        const domain = domains[wordpressDomain]
+                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        const { id } = uploadingToDomain.data
+                        const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
+                        console.log('published Summary Article', publishArticle._id)
+                        console.log('uploaded to wordpress', uploadingToDomain.message)
 
-                        }
-                        else {
-
-                            const payload = { title, "status": "publish", content: rewritten }
-                            const domain = domains[wordpressDomain]
-                            const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                            const { id } = uploadingToDomain.data
-                            const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2' ,articleImage:rewriteImage})
-                            console.log('published Rewritten Article', publishArticle._id)
-                            console.log('uploaded to wordpress', uploadingToDomain.message)
-                        }
                     }
                     else {
-                        await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
+
+                        const payload = { title, "status": "publish", content: rewritten }
+                        const domain = domains[wordpressDomain]
+                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        const { id } = uploadingToDomain.data
+                        if (rewriteImage.length) {
+                            const formData = new FormData()
+                            formData.append('file', files[0])
+                            const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                        }
+                        const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2', articleImage: rewriteImage })
+                        console.log('published Rewritten Article', publishArticle._id)
+                        console.log('uploaded to wordpress', uploadingToDomain.message)
                     }
+                }
+                else {
+                    await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
                 }
             }
         }
 
-        return res.json({ data: "Search Completed", totalPublished, totalArticles })
+        return res.json({ data: "Search Completed", totalPublished, totalArticles:limit })
     }
     return res.status(400).json({ message: "Urls and Keywords Are Required To Search" })
 }

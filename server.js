@@ -17,7 +17,7 @@ app.use(cors({
 }))
 app.use(helmet())
 app.use(morgan('dev'))
-app.use(express.json({limit:'2gb'}))
+app.use(express.json({ limit: '2gb' }))
 app.use('/api', routeRouter)
 
 async function connect() {
@@ -36,60 +36,73 @@ cron.schedule('* * * * *', async () => {
     const getAllScheduled = await scheduleModel.find()
     if (getAllScheduled.length > 0) {
         for (let e of getAllScheduled) {
-            const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, userId, domain: wordpressDomain, lowRelevanceArticles, periodicity } = e
+            const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, userId, domain: wordpressDomain, lowRelevanceArticles, periodicity ,limit,generateImages} = e
             const currentDate = moment().format("YYYY-MM-DD")
             const nextDate = moment(new Date(timeOfCheck)).format("YYYY-MM-DD")
-            console.log('currentDate',currentDate,'current hour',moment().hour(),'current minute',moment().minute())
-            console.log('Database Date',nextDate,'current hour',periodicity.hour,'current minute',periodicity.minute)
+            console.log('currentDate', currentDate, 'current hour', moment().hour(), 'current minute', moment().minute())
+            console.log('Database Date', nextDate, 'current hour', periodicity.hour, 'current minute', periodicity.minute)
             if ((currentDate == nextDate) && moment().hour() == periodicity.hour && moment().minute() == periodicity.minute) {
+                let totalArticleUrls=[]
                 for (let j of urls) {
                     const articleUrlsArray = await Scrap(j)
-                    for (let p of articleUrlsArray) {
-                        const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
-                        if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
-                            const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link,rewriteImage } = await new Promise(async (resolvee, reject) => {
+                    totalArticleUrls=[...totalArticleUrls,...articleUrlsArray]
+                }
 
-                                resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType))
-                            })
-                            if (!message) {
+                for (let p of totalArticleUrls.slice(0,limit)) {
+                    const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
+                    if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
+                        const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {
+
+                            resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType,generateImages))
+                        })
+                        if (!message) {
 
 
-                                if (original) {
-                                    const payload = { title, "status": "publish", content: original }
-                                    const domain = domains[wordpressDomain]
-                                    const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
-                                    const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1' })
-                                    console.log('published Original Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
+                            if (original) {
+                                const payload = { title, "status": "publish", content: original }
+                                const domain = domains[wordpressDomain]
+                                const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                                const { id } = uploadingToDomain.data
+                                if (rewriteImage.length) {
+                                    const formData = new FormData()
+                                    formData.append('file', files[0])
+                                    const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 }
-                                else if (summary) {
-                                    const payload = { title, "status": "publish", content: summary }
-                                    const domain = domains[wordpressDomain]
-                                    const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
-                                    const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
-                                    console.log('published Summary Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
-                                }
-                                else {
-
-                                    const payload = { title, "status": "publish", content: rewritten }
-                                    const domain = domains[wordpressDomain]
-                                    const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
-                                    const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2',articleImage:rewriteImage })
-                                    console.log('published Rewritten Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
-                                }
+                                const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1', articleImage: rewriteImage })
+                                console.log('published Original Article', publishArticle._id)
+                                console.log('uploaded to wordpress', uploadingToDomain.message)
+                            }
+                            else if (summary) {
+                                const payload = { title, "status": "publish", content: summary }
+                                const domain = domains[wordpressDomain]
+                                const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                                const { id } = uploadingToDomain.data
+                                const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
+                                console.log('published Summary Article', publishArticle._id)
+                                console.log('uploaded to wordpress', uploadingToDomain.message)
                             }
                             else {
-                                await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
+
+                                const payload = { title, "status": "publish", content: rewritten }
+                                const domain = domains[wordpressDomain]
+                                const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                                const { id } = uploadingToDomain.data
+                                if (rewriteImage.length) {
+                                    const formData = new FormData()
+                                    formData.append('file', files[0])
+                                    const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                }
+                                const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2', articleImage: rewriteImage })
+                                console.log('published Rewritten Article', publishArticle._id)
+                                console.log('uploaded to wordpress', uploadingToDomain.message)
                             }
+                        }
+                        else {
+                            await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
                         }
                     }
                 }
-                console.log('im hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+                // console.log('im hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
                 let checkTime
                 if (Number(timeCheckType) == 1) {
                     checkTime = moment().add(1, 'days');

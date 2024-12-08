@@ -79,6 +79,14 @@ const scheduleSchema=new mongoose.Schema({
         type:String,
         enum:['1','2','3','4'],
         default:'2'
+    },
+    generateImages:{
+        type:Boolean,
+        default:false
+    },
+    limit:{
+        type:Number,
+        default:10
     }
 },{timestamps:true})
 
@@ -113,7 +121,7 @@ const publishedArticlesSchema=new mongoose.Schema(
             required:true
         },
         articleImage:{
-            type:String
+            type:[String]
         }
     },{timestamps:true}
 )

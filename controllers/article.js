@@ -25,6 +25,7 @@ const publishArticle = async (req, res) => {
     console.log('domain', domainToPublishTo)
     const { html, keys,files } = await Manipulate(article)
     let content = html
+    
     const payload = {
         title,
         "status": "publish",

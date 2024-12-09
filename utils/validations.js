@@ -13,7 +13,7 @@ const postScheduleValidation=[body('relevanceIndex').notEmpty().withMessage('Rel
 
 
 }),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number').custom((value)=>{
-    const allowedValues=[1,2,3,4]
+    const allowedValues=[1,2]
     if (!allowedValues.includes(Number(value))){
         throw new Error('Domain Should Be either 1,2,3,4')
     }
@@ -22,12 +22,6 @@ const postScheduleValidation=[body('relevanceIndex').notEmpty().withMessage('Rel
     const allowedValues=[1,2,3,4,5,6,7,8]
     if (!allowedValues.includes(Number(value))){
         throw new Error(`TimeOfCheck Should Be either ${allowedValues.join(',')}`)
-    }
-    return true
-}),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number').custom((value)=>{
-    const allowedValues=[1]
-    if (!allowedValues.includes(Number(value))){
-        throw new Error(`Domain Should Be either ${allowedValues.join(',')}`)
     }
     return true
 }),body('publishType').notEmpty().withMessage('Publish Type Is Required').isNumeric().withMessage('Invalid Publish Type'),body('periodicity').notEmpty().withMessage("Periodicity is Required").isObject().withMessage("Invalid Periodicty Type").custom((value)=>{

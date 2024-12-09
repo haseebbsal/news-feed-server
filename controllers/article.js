@@ -195,8 +195,10 @@ const DeleteArticle = async (req, res) => {
     const { id } = req.query
     const getPublishedData = await publishedArticleModel.findOne({ articleId: id })
     if (getPublishedData) {
-        const wordpressDomain = domains[getPublishedData.domain]
-        const deleteFromWordPress = await axios.delete(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`)
+        let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(getPublishedData.domain) - 1] } })
+        domainToPublishTo = domainToPublishTo.domains[0].domain
+
+        const deleteFromWordPress = await axios.delete(`${domainToPublishTo}/wp-json/wp/v2/posts/${id}`)
         if (getPublishedData.articleImage.length) {
             await DeleteFromBucket(getPublishedData.articleImage)
             console.log('deleted from bucket')
@@ -238,7 +240,8 @@ const updatePublishedArticle = async (req, res) => {
     const getPublishedData = await publishedArticleModel.findOne({ articleId: id })
     // console.log(req.body.content)
     if (getPublishedData) {
-        const wordpressDomain = domains[getPublishedData.domain]
+        let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(getPublishedData.domain) - 1] } })
+        domainToPublishTo = domainToPublishTo.domains[0].domain
         const { html, keys, files } = await Manipulate(req.body.content)
         req.body.content = html
         let deleted = false
@@ -249,9 +252,9 @@ const updatePublishedArticle = async (req, res) => {
         if (keys.length) {
             const formData = new FormData()
             formData.append('file', files[0])
-            const puttingThumbnail = await axios.postForm(`${wordpressDomain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+            const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
         }
-        const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
+        const updateFromWordPress = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts/${id}`, req.body)
         const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article: html, title: req.body.title, articleImage: deleted ? keys : getPublishedData.articleImage } })
         return res.json({ data: updateFromDB })
     }

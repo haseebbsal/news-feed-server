@@ -55,7 +55,6 @@ const scheduleSchema=new mongoose.Schema({
     },
     domain:{
         type:String,
-        enum:domainEnum,
         default:'1'
     },
     periodicity:{
@@ -126,10 +125,19 @@ const publishedArticlesSchema=new mongoose.Schema(
     },{timestamps:true}
 )
 
+const adminDomainSchema=new mongoose.Schema({
+    domains:{
+        type:[{domain:String}],
+        required:true
+    }
+})
+
+const adminModel=mongoose.model('adminDomains',adminDomainSchema)
+
 const publishedArticleModel=mongoose.model('publishedarticle',publishedArticlesSchema)
 
 const scheduleModel=mongoose.model('schedule',scheduleSchema)
 
 const userModel = mongoose.model('users', userSchema)
 
-module.exports={userModel,scheduleModel,publishedArticleModel}
+module.exports={userModel,scheduleModel,publishedArticleModel,adminModel}

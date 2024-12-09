@@ -1,6 +1,6 @@
 const { validationResult, check } = require("express-validator")
 const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket, Manipulate } = require("../utils")
-const { scheduleModel, publishedArticleModel } = require("../db-models")
+const { scheduleModel, publishedArticleModel, adminModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
 const { default: axios } = require("axios")
@@ -20,12 +20,12 @@ const publishArticle = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    let { title, domain, article, articleUrl, publishType,  } = req.body
-    const domainToPublishTo = domains[domain]
-    console.log('domain', domainToPublishTo)
-    const { html, keys,files } = await Manipulate(article)
+    let { title, domain, article, articleUrl, publishType, } = req.body
+    let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(domain) - 1] } })
+    domainToPublishTo = domainToPublishTo.domains[0].domain
+    const { html, keys, files } = await Manipulate(article)
     let content = html
-    
+
     const payload = {
         title,
         "status": "publish",
@@ -34,14 +34,14 @@ const publishArticle = async (req, res) => {
     // articleImage = key
     const publish = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
     const articleId = publish.data.id
-    if(keys.length){
-        const formData=new FormData()
-        formData.append('file',files[0])
+    if (keys.length) {
+        const formData = new FormData()
+        formData.append('file', files[0])
         console.log(files[0])
-        const puttingThumbnail=await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`,formData)
+        const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`, formData)
     }
-    const addToPublishDb = await publishedArticleModel.create({ title, article:content, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
-    res.json({ data: domains[domain] })
+    const addToPublishDb = await publishedArticleModel.create({ title, article: content, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
+    res.json({ data: domainToPublishTo })
 
 }
 
@@ -51,7 +51,7 @@ const scheduleArticle = async (req, res) => {
         const errors = validateResult.array().map((e) => e.msg)
         return res.status(400).json({ data: errors })
     }
-    let { keywords, domain, urls, relevanceIndex, timeOfCheck, publishType, periodicity,limit,generateImages } = req.body
+    let { keywords, domain, urls, relevanceIndex, timeOfCheck, publishType, periodicity, limit, generateImages } = req.body
 
     // console.log('limit',limit,'generate',generateImages)
     let checkTime
@@ -83,14 +83,14 @@ const scheduleArticle = async (req, res) => {
     const token = req.headers.authorization.split(' ')[1]
     const { user } = verifyToken(token)
     try {
-        const getCurrentCheckTime=await scheduleModel.findOne({userId:user._id})
-        const currentSavedCheckTime=getCurrentCheckTime.timeCheckType
-        if(currentSavedCheckTime!=Number(timeOfCheck)){
-            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, timeOfCheck: checkTime, timeCheckType: timeOfCheck, publishType, periodicity ,limit,generateImages} }, { upsert: true })
+        const getCurrentCheckTime = await scheduleModel.findOne({ userId: user._id })
+        const currentSavedCheckTime = getCurrentCheckTime.timeCheckType
+        if (currentSavedCheckTime != Number(timeOfCheck)) {
+            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, timeOfCheck: checkTime, timeCheckType: timeOfCheck, publishType, periodicity, limit, generateImages } }, { upsert: true })
             return res.json({ message: "Success", data: addToScheduledData })
         }
-        else{
-            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, publishType, periodicity ,limit,generateImages} }, { upsert: true })
+        else {
+            const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, publishType, periodicity, limit, generateImages } }, { upsert: true })
             return res.json({ message: "Success", data: addToScheduledData })
         }
     }
@@ -239,12 +239,12 @@ const updatePublishedArticle = async (req, res) => {
     // console.log(req.body.content)
     if (getPublishedData) {
         const wordpressDomain = domains[getPublishedData.domain]
-        const { html, keys,files } = await Manipulate(req.body.content)
+        const { html, keys, files } = await Manipulate(req.body.content)
         req.body.content = html
         let deleted = false
         if (getPublishedData.articleImage.length) {
-                await DeleteFromBucket(getPublishedData.articleImage)
-                deleted = true
+            await DeleteFromBucket(getPublishedData.articleImage)
+            deleted = true
         }
         if (keys.length) {
             const formData = new FormData()
@@ -252,7 +252,7 @@ const updatePublishedArticle = async (req, res) => {
             const puttingThumbnail = await axios.postForm(`${wordpressDomain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
         }
         const updateFromWordPress = await axios.post(`${wordpressDomain}/wp-json/wp/v2/posts/${id}`, req.body)
-        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article:html, title: req.body.title, articleImage: deleted ? keys : getPublishedData.articleImage } })
+        const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article: html, title: req.body.title, articleImage: deleted ? keys : getPublishedData.articleImage } })
         return res.json({ data: updateFromDB })
     }
     return res.status(400).json({ message: "Id Doesnt Exist" })
@@ -309,11 +309,11 @@ const launchSearch = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
-    const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity ,limit,generateImages} = await scheduleModel.findOne({ userId })
+    const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity, limit, generateImages } = await scheduleModel.findOne({ userId })
     console.log('publishType', publishType)
     let totalPublished = 0
     let totalArticles = 0
-    let allArticles=[]
+    let allArticles = []
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
@@ -324,22 +324,23 @@ const launchSearch = async (req, res) => {
                 return res.status(400).json({ message: `${j} is not a valid RSS Feed` })
             }
             totalArticles += articleUrlsArray.length
-            allArticles=[...allArticles,...articleUrlsArray]
+            allArticles = [...allArticles, ...articleUrlsArray]
         }
-        for (let p of allArticles.slice(0,limit)) {
+        for (let p of allArticles.slice(0, limit)) {
             const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
             if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
-                const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage,files } = await new Promise(async (resolvee, reject) => {
+                const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {
 
-                    resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType,generateImages))
+                    resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType, generateImages))
                 })
                 if (!message) {
 
                     totalPublished += 1
                     if (original) {
                         const payload = { title, "status": "publish", content: original }
-                        const domain = domains[wordpressDomain]
-                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
+                        domainToPublishTo = domainToPublishTo.domains[0].domain
+                        const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                         const { id } = uploadingToDomain.data
                         const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1' })
                         console.log('published Original Article', publishArticle._id)
@@ -348,8 +349,9 @@ const launchSearch = async (req, res) => {
                     }
                     else if (summary) {
                         const payload = { title, "status": "publish", content: summary }
-                        const domain = domains[wordpressDomain]
-                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
+                        domainToPublishTo = domainToPublishTo.domains[0].domain
+                        const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                         const { id } = uploadingToDomain.data
                         const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
                         console.log('published Summary Article', publishArticle._id)
@@ -359,8 +361,9 @@ const launchSearch = async (req, res) => {
                     else {
 
                         const payload = { title, "status": "publish", content: rewritten }
-                        const domain = domains[wordpressDomain]
-                        const uploadingToDomain = await axios.post(`${domain}/wp-json/wp/v2/posts`, payload)
+                        let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
+                        domainToPublishTo = domainToPublishTo.domains[0].domain
+                        const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                         const { id } = uploadingToDomain.data
                         if (rewriteImage.length) {
                             const formData = new FormData()
@@ -378,7 +381,7 @@ const launchSearch = async (req, res) => {
             }
         }
 
-        return res.json({ data: "Search Completed", totalPublished, totalArticles:limit })
+        return res.json({ data: "Search Completed", totalPublished, totalArticles: limit })
     }
     return res.status(400).json({ message: "Urls and Keywords Are Required To Search" })
 }

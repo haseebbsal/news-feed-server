@@ -12,13 +12,7 @@ const postScheduleValidation=[body('relevanceIndex').notEmpty().withMessage('Rel
     return true
 
 
-}),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number').custom((value)=>{
-    const allowedValues=[1,2]
-    if (!allowedValues.includes(Number(value))){
-        throw new Error('Domain Should Be either 1,2,3,4')
-    }
-    return true
-}),body('timeOfCheck').notEmpty().withMessage('TimeOfCheck is required').isNumeric().withMessage('Invalid TimeOfCheck Type').custom((value)=>{
+}),body('domain').notEmpty().withMessage('Domain is required').isNumeric().withMessage('Domain Should Be A Number'),body('timeOfCheck').notEmpty().withMessage('TimeOfCheck is required').isNumeric().withMessage('Invalid TimeOfCheck Type').custom((value)=>{
     const allowedValues=[1,2,3,4,5,6,7,8]
     if (!allowedValues.includes(Number(value))){
         throw new Error(`TimeOfCheck Should Be either ${allowedValues.join(',')}`)

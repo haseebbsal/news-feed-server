@@ -21,10 +21,10 @@ const s3Client = new S3.S3({
 })
 
 
-const domains = {
-    '1': "https://news.rias-aero.com",
-    '2': "https://news.cyberadviser.net"
-}
+// const domains = {
+//     '1': "https://news.rias-aero.com",
+//     '2': "https://news.cyberadviser.net"
+// }
 
 function extractTextFromHTML(html) {
     // Load the HTML into Cheerio
@@ -464,4 +464,4 @@ async function Manipulate(html) {
 }
 
 
-module.exports = { authMiddleWare, domains, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate }
+module.exports = { authMiddleWare, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate }

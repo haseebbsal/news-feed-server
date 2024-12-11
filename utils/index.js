@@ -158,7 +158,7 @@ const dissbotFetchArticle = async (url) => {
     let content
     let title
     try {
-        const browser = await puppeteer.launch({headless:false,executablePath: '/usr/bin/chromium-browser',ignoreDefaultArgs: ['--disable-extensions']});
+        const browser = await puppeteer.launch({headless:false,executablePath: '/usr/bin/chromium-browser',ignoreDefaultArgs: ['--disable-extensions'],args:['--no-sandbox','--disable-setuid-sandbox']});
         const page = await browser.newPage();
 
         // Navigate the page to a URL

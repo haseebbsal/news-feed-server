@@ -91,17 +91,22 @@ const changePasswordUser=async(req,res)=>{
 }
 
 const updateProfile=async (req,res)=>{
-    const {buffer}=req.file
-    const accessToken=req.headers.authorization.split(' ')[1]
-    const accessTokenData=verifyToken(accessToken)
-    const userId = accessTokenData.user._id
-    const {key}=await SaveToBucket(buffer)
-    const getCurrentImage=await profileModel.findOne({userId})
-    if(getCurrentImage.defaultImage){
-        await DeleteFromBucket(getCurrentImage.defaultImage)
+    try{
+        const {buffer}=req.file
+        const accessToken=req.headers.authorization.split(' ')[1]
+        const accessTokenData=verifyToken(accessToken)
+        const userId = accessTokenData.user._id
+        const {key}=await SaveToBucket(buffer)
+        const getCurrentImage=await profileModel.findOne({userId})
+        if(getCurrentImage.defaultImage){
+            await DeleteFromBucket(getCurrentImage.defaultImage)
+        }
+        const updateProfile=await profileModel.updateOne({userId},{$set:{defaultImage:key}},{upsert:true})
+        return res.json({message:"Success",data:updateProfile})
     }
-    const updateProfile=await profileModel.updateOne({userId},{$set:{defaultImage:key}},{upsert:true})
-    return res.json({message:"Success",data:updateProfile})
+    catch{
+        return res.status(400).json("error")
+    }
 }
 
 const getProfile=async (req,res)=>{

@@ -169,7 +169,19 @@ const extractt = require('article-parser')
 // const cheerio=require('cheerio')
 // const axios=require('axios')
 const puppeteer = require('puppeteer')
+const playwright = require('playwright');
 async function check() {
+
+    const browser = await playwright.chromium.launch({ headless: false });
+
+    const context = await browser.newContext();
+
+    const page = await context.newPage();
+
+    // Navigate to the website
+
+    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
+    
 
     // const data = await axios.get("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
     // const cheerioExtract=cheerio.load(data.data)
@@ -182,22 +194,24 @@ async function check() {
     // console.log(content)
     // console.log(title)
 
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
 
-    // Navigate the page to a URL
-    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
-    // Set screen size
-    await page.setViewport({ width: 1080, height: 1024 });
-    // await page.waitForNavigation({
-    //     waitUntil: 'networkidle0',
-    // });
+
+    // const browser = await puppeteer.launch({ headless: false });
+    // const page = await browser.newPage();
+
+    // // Navigate the page to a URL
+    // await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
+    // // Set screen size
+    // await page.setViewport({ width: 1080, height: 1024 });
+    // // await page.waitForNavigation({
+    // //     waitUntil: 'networkidle0',
+    // // });
 
     let content = await page.content()
     const newData = await extractt.extract(content = content)
     console.log(newData.content)
     console.log(newData.title)
-    await page.close()
+    // await page.close()
 
     // console.log(await page.content()  )
     // Type into search box

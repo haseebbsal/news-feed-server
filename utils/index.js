@@ -10,7 +10,8 @@ const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1', '2']
 const nanoidd = import('nanoid')
 const S3 = require('@aws-sdk/client-s3')
-const puppeteer=require('puppeteer')
+const playwright = require('playwright');
+
 const s3Client = new S3.S3({
     forcePathStyle: false, // Configures to use subdomain/virtual calling format.
     endpoint: "https://nyc3.digitaloceanspaces.com",
@@ -158,22 +159,23 @@ const dissbotFetchArticle = async (url) => {
     let content
     let title
     try {
-        const browser = await puppeteer.launch({headless:false,executablePath: '/usr/bin/chromium-browser',ignoreDefaultArgs: ['--disable-extensions'],args:['--no-sandbox','--disable-setuid-sandbox'],env:{DISPLAY: ":10.0"}});
-        const page = await browser.newPage();
+        const browser = await playwright.chromium.launch({ headless: false });
 
-        // Navigate the page to a URL
+        const context = await browser.newContext();
+
+        const page = await context.newPage();
+
         await page.goto(url,{waitUntil:'networkidle0'});
-        // Set screen size
-        await page.setViewport({ width: 1080, height: 1024 });
-        let content=await page.content()
-
-        const data = await extractt.extract(content = content)
+        
+    
+        const newContent=await page.content()
+        const data = await extractt.extract(content = newContent)
         content = data.content
         title = data.title
 
     }
-    catch(e) {
-        console.log('error here',e)
+    catch (e) {
+        console.log('error here', e)
         return { error: "no page exists" }
     }
     return await new Promise((resolve, reject) => {

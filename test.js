@@ -149,5 +149,80 @@
 
 
 // marysss  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
-const moment=require('moment')
-console.log(moment().hour())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const extractt = require('article-parser')
+// const extratus=import('@extractus/article-extractor')
+// const cheerio=require('cheerio')
+// const axios=require('axios')
+const puppeteer = require('puppeteer')
+async function check() {
+
+    // const data = await axios.get("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
+    // const cheerioExtract=cheerio.load(data.data)
+    // console.log(cheerioExtract.html())
+    // const data = await extractt.extract("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
+    // const data=(await extratus).extract("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
+    // const content = data.content
+    // const title = data.title
+    // console.log(await data.d)
+    // console.log(content)
+    // console.log(title)
+
+    const browser = await puppeteer.launch({ headless: false });
+    const page = await browser.newPage();
+
+    // Navigate the page to a URL
+    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
+    // Set screen size
+    await page.setViewport({ width: 1080, height: 1024 });
+    // await page.waitForNavigation({
+    //     waitUntil: 'networkidle0',
+    // });
+
+    let content = await page.content()
+    const newData = await extractt.extract(content = content)
+    console.log(newData.content)
+    console.log(newData.title)
+    await page.close()
+
+    // console.log(await page.content()  )
+    // Type into search box
+    // await page.type('.search-box__input', 'automate beyond recorder');
+
+    // // Wait and click on first result
+    // const searchResultSelector = '.search-box__link';
+    // await page.waitForSelector(searchResultSelector);
+    // await page.click(searchResultSelector);
+
+    // // Locate the full title with a unique string
+    // const textSelector = await page.waitForSelector(
+    //   'text/Customize and automate'
+    // );
+    // const fullTitle = await textSelector?.evaluate(el => el.textContent);
+
+    // // Print the full title
+    // console.log('The title of this blog post is "%s".', fullTitle);
+
+    await browser.close();
+}
+
+
+check()
+
+
+
+

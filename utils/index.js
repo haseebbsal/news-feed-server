@@ -10,6 +10,7 @@ const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1', '2']
 const nanoidd = import('nanoid')
 const S3 = require('@aws-sdk/client-s3')
+const puppeteer=require('puppeteer')
 const s3Client = new S3.S3({
     forcePathStyle: false, // Configures to use subdomain/virtual calling format.
     endpoint: "https://nyc3.digitaloceanspaces.com",
@@ -157,7 +158,16 @@ const dissbotFetchArticle = async (url) => {
     let content
     let title
     try {
-        const data = await extractt.extract(url)
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+
+        // Navigate the page to a URL
+        await page.goto(url,{waitUntil:'networkidle0'});
+        // Set screen size
+        await page.setViewport({ width: 1080, height: 1024 });
+        let content=await page.content()
+
+        const data = await extractt.extract(content = content)
         content = data.content
         title = data.title
 
@@ -223,12 +233,12 @@ async function SaveToBucket(data) {
     const key = (await nanoidd).nanoid(9)
     const params = {
         Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
-        Key: key+'.png', // Object key, referenced whenever you want to access this file later.
+        Key: key + '.png', // Object key, referenced whenever you want to access this file later.
         Body: data, // The object's contents. This variable is an object, not a string.
         ACL: "public-read", // Defines ACL permissions, such as private or public.
     };
     const sendToBucket = await s3Client.send(new S3.PutObjectCommand(params))
-    return { url: process.env.bucket_url+'/' + key+'.png', key:key+'.png' }
+    return { url: process.env.bucket_url + '/' + key + '.png', key: key + '.png' }
 }
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType, generateImages) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
@@ -458,4 +468,4 @@ async function Manipulate(html) {
 }
 
 
-module.exports = { authMiddleWare, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate ,urltoFile}
+module.exports = { authMiddleWare, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate, urltoFile }

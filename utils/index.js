@@ -158,7 +158,7 @@ const dissbotFetchArticle = async (url) => {
     let content
     let title
     try {
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({headless:false});
         const page = await browser.newPage();
 
         // Navigate the page to a URL

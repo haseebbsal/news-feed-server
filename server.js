@@ -8,7 +8,7 @@ const { default: mongoose } = require('mongoose')
 const cron = require('node-cron')
 const PORT = `${process.env.PORT}`
 const helmet = require('helmet')
-const { scheduleModel, publishedArticleModel } = require('./db-models')
+const { scheduleModel, publishedArticleModel, profileModel } = require('./db-models')
 const { default: axios } = require('axios')
 const { Scrap, GetArticleDataSchedule, domains, GetArticleData } = require('./utils')
 const moment = require('moment')
@@ -67,7 +67,18 @@ cron.schedule('* * * * *', async () => {
                                 if (rewriteImage.length) {
                                     const formData = new FormData()
                                     formData.append('file', files[0])
-                                    const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                    const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                }
+                                if (!rewriteImage.length) {
+                                    const getUserDefaultImage = await profileModel.findOne({ userId })
+                                    if (getUserDefaultImage.defaultImage) {
+                                        let file = await urltoFile(`${process.env.bucket_url}/${getUserDefaultImage.defaultImage}`)
+                                        file = new File([new Blob([file])], 'anything.png')
+                                        const formData = new FormData()
+                                        formData.append('file', file)
+                                        // console.log(files[0])
+                                        const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                    }
                                 }
                                 const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1', articleImage: rewriteImage })
                                 console.log('published Original Article', publishArticle._id)
@@ -79,12 +90,21 @@ cron.schedule('* * * * *', async () => {
                                 domainToPublishTo = domainToPublishTo.domains[0].domain
                                 const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                                 const { id } = uploadingToDomain.data
+                                const getUserDefaultImage = await profileModel.findOne({ userId })
+                                if (getUserDefaultImage.defaultImage) {
+                                    let file = await urltoFile(`${process.env.bucket_url}/${getUserDefaultImage.defaultImage}`)
+                                    file = new File([new Blob([file])], 'anything.png')
+                                    const formData = new FormData()
+                                    formData.append('file', file)
+                                    const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                }
+                                // console.log(files[0])
+                                const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
                                 console.log('published Summary Article', publishArticle._id)
                                 console.log('uploaded to wordpress', uploadingToDomain.message)
                             }
                             else {
-
                                 const payload = { title, "status": "publish", content: rewritten }
                                 let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
                                 domainToPublishTo = domainToPublishTo.domains[0].domain
@@ -93,7 +113,17 @@ cron.schedule('* * * * *', async () => {
                                 if (rewriteImage.length) {
                                     const formData = new FormData()
                                     formData.append('file', files[0])
-                                    const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                    const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                }
+                                if (!rewriteImage.length) {
+                                    const getUserDefaultImage = await profileModel.findOne({ userId })
+                                    if (getUserDefaultImage.defaultImage) {
+                                        let file = await urltoFile(`${process.env.bucket_url}/${getUserDefaultImage.defaultImage}`)
+                                        file = new File([new Blob([file])], 'anything.png')
+                                        const formData = new FormData()
+                                        formData.append('file', file)
+                                        const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                                    }
                                 }
                                 const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2', articleImage: rewriteImage })
                                 console.log('published Rewritten Article', publishArticle._id)

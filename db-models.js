@@ -132,6 +132,17 @@ const adminDomainSchema=new mongoose.Schema({
     }
 })
 
+const profileSchema=new mongoose.Schema({
+    defaultImage:{
+        type:String,
+    },
+    userId:{
+        type:mongoose.SchemaTypes.ObjectId,
+        ref:"users",
+        required:true
+    }
+})
+
 const adminModel=mongoose.model('adminDomains',adminDomainSchema)
 
 const publishedArticleModel=mongoose.model('publishedarticle',publishedArticlesSchema)
@@ -140,4 +151,6 @@ const scheduleModel=mongoose.model('schedule',scheduleSchema)
 
 const userModel = mongoose.model('users', userSchema)
 
-module.exports={userModel,scheduleModel,publishedArticleModel,adminModel}
+const profileModel=mongoose.model('profile',profileSchema)
+
+module.exports={userModel,scheduleModel,publishedArticleModel,adminModel,profileModel}

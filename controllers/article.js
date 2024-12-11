@@ -1,6 +1,6 @@
 const { validationResult, check } = require("express-validator")
-const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket, Manipulate } = require("../utils")
-const { scheduleModel, publishedArticleModel, adminModel } = require("../db-models")
+const { domains, verifyToken, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, generateImage, GetArticleData, Scrap, recursionGenerateImage, SaveToBucket, DeleteFromBucket, Manipulate, urltoFile } = require("../utils")
+const { scheduleModel, publishedArticleModel, adminModel, profileModel } = require("../db-models")
 const moment = require('moment')
 const { GoogleGenerativeAI } = require("@google/generative-ai")
 const { default: axios } = require("axios")
@@ -39,6 +39,17 @@ const publishArticle = async (req, res) => {
         formData.append('file', files[0])
         console.log(files[0])
         const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`, formData)
+    }
+    if (!keys.length) {
+        const { defaultImage } = await profileModel.findOne({ userId })
+        if (defaultImage) {
+            let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
+            file = new File([new Blob([file])], 'anything.png')
+            const formData = new FormData()
+            formData.append('file', file)
+            // console.log(files[0])
+            const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${articleId}`, formData)
+        }
     }
     const addToPublishDb = await publishedArticleModel.create({ title, article: content, userId, articleUrl, articleId, domain, publishType, articleImage: keys })
     res.json({ data: domainToPublishTo })
@@ -148,13 +159,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
     "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
     Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
     `
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
-    
-    The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
-    Remove all images from the HTML content, regardless of their relevance to the summary.
-    At the very end of the article, on a separate line, include the following note in the exact specified format:
-    <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
-    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a detailed, well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
@@ -169,13 +174,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
             "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
             Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
             `
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
-            
-            The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
-            Remove all images from the HTML content, regardless of their relevance to the summary.
-            At the very end of the article, on a separate line, include the following note in the exact specified format:
-            <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
-            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a detailed, well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
@@ -237,8 +236,11 @@ const updatePublishedArticle = async (req, res) => {
     }
 
     const { id } = req.query
+
+    const accessToken = req.headers.authorization.split(' ')[1]
+    const accessTokenData = verifyToken(accessToken)
+    const userId = accessTokenData.user._id
     const getPublishedData = await publishedArticleModel.findOne({ articleId: id })
-    // console.log(req.body.content)
     if (getPublishedData) {
         let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(getPublishedData.domain) - 1] } })
         domainToPublishTo = domainToPublishTo.domains[0].domain
@@ -254,6 +256,18 @@ const updatePublishedArticle = async (req, res) => {
             formData.append('file', files[0])
             const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
         }
+        if (!keys.length) {
+            const getUserDefaultImage = await profileModel.findOne({ userId })
+            if (getUserDefaultImage.defaultImage) {
+                let file = await urltoFile(`${process.env.bucket_url}/${getUserDefaultImage.defaultImage}`)
+                file = new File([new Blob([file])], 'anything.png')
+                const formData = new FormData()
+                formData.append('file', file)
+                // console.log(files[0])
+                const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+            }
+        }
+
         const updateFromWordPress = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts/${id}`, req.body)
         const updateFromDB = await publishedArticleModel.updateOne({ articleId: id }, { $set: { article: html, title: req.body.title, articleImage: deleted ? keys : getPublishedData.articleImage } })
         return res.json({ data: updateFromDB })
@@ -317,6 +331,7 @@ const launchSearch = async (req, res) => {
     let totalPublished = 0
     let totalArticles = 0
     let allArticles = []
+    const { defaultImage } = await profileModel.findOne({ userId })
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
@@ -345,10 +360,24 @@ const launchSearch = async (req, res) => {
                         domainToPublishTo = domainToPublishTo.domains[0].domain
                         const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                         const { id } = uploadingToDomain.data
+                        if (rewriteImage.length) {
+                            const formData = new FormData()
+                            formData.append('file', files[0])
+                            const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                        }
+                        if (!rewriteImage.length) {
+                            if (defaultImage) {
+                                let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
+                                file = new File([new Blob([file])], 'anything.png')
+                                const formData = new FormData()
+                                formData.append('file', file)
+                                // console.log(files[0])
+                                const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                            }
+                        }
                         const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1' })
                         console.log('published Original Article', publishArticle._id)
                         console.log('uploaded to wordpress', uploadingToDomain.message)
-
                     }
                     else if (summary) {
                         const payload = { title, "status": "publish", content: summary }
@@ -356,13 +385,21 @@ const launchSearch = async (req, res) => {
                         domainToPublishTo = domainToPublishTo.domains[0].domain
                         const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
                         const { id } = uploadingToDomain.data
+                        if (defaultImage) {
+                            let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
+                            file = new File([new Blob([file])], 'anything.png')
+                            const formData = new FormData()
+                            formData.append('file', file)
+                            const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                        }
+                        // console.log(files[0])
+                        const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                         const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
                         console.log('published Summary Article', publishArticle._id)
                         console.log('uploaded to wordpress', uploadingToDomain.message)
 
                     }
                     else {
-
                         const payload = { title, "status": "publish", content: rewritten }
                         let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
                         domainToPublishTo = domainToPublishTo.domains[0].domain
@@ -371,8 +408,19 @@ const launchSearch = async (req, res) => {
                         if (rewriteImage.length) {
                             const formData = new FormData()
                             formData.append('file', files[0])
-                            const puttingThumbnail = await axios.postForm(`${domain}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                            const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                         }
+                        if (!rewriteImage.length) {
+                            if (defaultImage) {
+                                let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
+                                file = new File([new Blob([file])], 'anything.png')
+                                const formData = new FormData()
+                                formData.append('file', file)
+                                // console.log(files[0])
+                                const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
+                            }
+                        }
+
                         const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2', articleImage: rewriteImage })
                         console.log('published Rewritten Article', publishArticle._id)
                         console.log('uploaded to wordpress', uploadingToDomain.message)

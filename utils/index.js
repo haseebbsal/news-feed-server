@@ -223,12 +223,12 @@ async function SaveToBucket(data) {
     const key = (await nanoidd).nanoid(9)
     const params = {
         Bucket: "news-bucket", // The path to the directory you want to upload the object to, starting with your Space name.
-        Key: key, // Object key, referenced whenever you want to access this file later.
+        Key: key+'.png', // Object key, referenced whenever you want to access this file later.
         Body: data, // The object's contents. This variable is an object, not a string.
         ACL: "public-read", // Defines ACL permissions, such as private or public.
     };
     const sendToBucket = await s3Client.send(new S3.PutObjectCommand(params))
-    return { url: process.env.bucket_url + key, key }
+    return { url: process.env.bucket_url+'/' + key+'.png', key:key+'.png' }
 }
 const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType, generateImages) => {
     // const genAI = new GoogleGenerativeAI(process.env.GENAI_KEY)
@@ -270,13 +270,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                     return { relevanceIndex: relevanceIndexGemini, rewritten: htmll, title, link, rewriteImage: keys, files }
                 }
             }
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
-    
-    The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
-    Remove all images from the HTML content, regardless of their relevance to the summary.
-    At the very end of the article, on a separate line, include the following note in the exact specified format:
-    <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
-    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a detailed, well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
 
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
             return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }
@@ -460,8 +454,8 @@ async function Manipulate(html) {
         x.attribs.src = url
     }
     const newHtml = $.html()
-    return { html:newHtml, keys, files }
+    return { html: newHtml, keys, files }
 }
 
 
-module.exports = { authMiddleWare, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate }
+module.exports = { authMiddleWare, verifyToken, Scrap, GetArticleDataSchedule, calculateRelevanceIndex, dissbotFetchArticle, rewriteOrSummaryHtml, domainEnum, generateImage, GetArticleData, recursionGenerateImage, SaveToBucket, DeleteFromBucket, sendEmail, Manipulate ,urltoFile}

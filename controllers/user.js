@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken')
-const {userModel, scheduleModel} = require('../db-models')
+const {userModel, scheduleModel, profileModel} = require('../db-models')
 const bcrypt=require('bcrypt')
-const { verifyToken } = require('../utils')
+const { verifyToken, SaveToBucket, DeleteFromBucket } = require('../utils')
+
 
 const individualUser = async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1]
@@ -40,6 +41,11 @@ const deleteUser=async (req, res) => {
     const { id } = req.query
     const deleteUser = await userModel.deleteOne({ _id: id })
     const deleteSchedule=await scheduleModel.deleteOne({userId:id})
+    const getProfile=await profileModel.findOne({userId})
+    const deleteProfile=await profileModel.deleteOne({userId:id})
+    if(getProfile.defaultImage){
+        await DeleteFromBucket(getProfile.defaultImage)
+    }
     return res.json({
         message: "Success",
         data: deleteUser
@@ -84,7 +90,28 @@ const changePasswordUser=async(req,res)=>{
     return res.json(updateUser)
 }
 
+const updateProfile=async (req,res)=>{
+    const {buffer}=req.file
+    const accessToken=req.headers.authorization.split(' ')[1]
+    const accessTokenData=verifyToken(accessToken)
+    const userId = accessTokenData.user._id
+    const {key}=await SaveToBucket(buffer)
+    const getCurrentImage=await profileModel.findOne({userId})
+    if(getCurrentImage.defaultImage){
+        await DeleteFromBucket(getCurrentImage.defaultImage)
+    }
+    const updateProfile=await profileModel.updateOne({userId},{$set:{defaultImage:key}},{upsert:true})
+    return res.json({message:"Success",data:updateProfile})
+}
+
+const getProfile=async (req,res)=>{
+    const accessToken=req.headers.authorization.split(' ')[1]
+    const accessTokenData=verifyToken(accessToken)
+    const userId = accessTokenData.user._id
+    const profile=await profileModel.findOne({userId})
+    return res.json({message:"Success",data:profile})
+}
 
 module.exports = {
-    individualUser,searchUser,deleteUser,blockUser,updateRollUser,changePasswordUser
+    individualUser,searchUser,deleteUser,blockUser,updateRollUser,changePasswordUser,updateProfile,getProfile
 }

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const { userModel, scheduleModel } = require('../db-models')
+const { userModel, scheduleModel, profileModel } = require('../db-models')
 const speakeasy = require('speakeasy');
 const { sendEmail, verifyToken } = require('../utils');
 
@@ -66,6 +66,7 @@ const register = async (req, res) => {
             const sendEmailToClient = sendEmail(email, code,username)
             console.log('email sent', sendEmailToClient)
             const createNewUser = await userModel.create({ email, username, password: newPassword, verificationCode: code, isApproved: false })
+            const profileUser=await profileModel.create({userId:createNewUser._id})
             const createScheduleForUser = await scheduleModel.create({ userId: createNewUser._id })
             return res.status(200).json(createNewUser)
         }

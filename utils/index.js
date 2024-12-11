@@ -172,8 +172,8 @@ const dissbotFetchArticle = async (url) => {
         title = data.title
 
     }
-    catch {
-        console.log('error here')
+    catch(e) {
+        console.log('error here',e)
         return { error: "no page exists" }
     }
     return await new Promise((resolve, reject) => {

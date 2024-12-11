@@ -165,13 +165,21 @@ const dissbotFetchArticle = async (url) => {
 
         const page = await context.newPage();
 
-        await page.goto(url,{waitUntil:'networkidle0'});
+        await page.goto(url,{timeout:3600000});
+
+        await new Promise((resolve,reject)=>{
+         setTimeout(()=>{
+            resolve('done')
+         },5000)   
+        })
+
         
     
         const newContent=await page.content()
         const data = await extractt.extract(content = newContent)
         content = data.content
         title = data.title
+        await browser.close();
 
     }
     catch (e) {

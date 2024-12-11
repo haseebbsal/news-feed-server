@@ -172,7 +172,7 @@ const puppeteer = require('puppeteer')
 const playwright = require('playwright');
 async function check() {
 
-    const browser = await playwright.chromium.launch({ headless: true });
+    const browser = await playwright.chromium.launch({ headless: false });
 
     const context = await browser.newContext();
 
@@ -180,9 +180,13 @@ async function check() {
 
     // Navigate to the website
 
-    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
+    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{timeout:3600000});
     
-
+    await new Promise((resolve,reject)=>{
+        setTimeout(()=>{
+           resolve('done')
+        },5000)   
+       })
     // const data = await axios.get("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
     // const cheerioExtract=cheerio.load(data.data)
     // console.log(cheerioExtract.html())

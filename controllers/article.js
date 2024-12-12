@@ -332,7 +332,7 @@ const launchSearch = async (req, res) => {
     let totalArticles = 0
     let allArticles = []
     const { defaultImage } = await profileModel.findOne({ userId })
-    const limitCheck=0
+    let limitCheck=0
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray

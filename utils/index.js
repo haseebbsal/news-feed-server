@@ -215,8 +215,8 @@ const dissbotFetchArticle = async (url) => {
             await browser.close()
 
         }
-        catch {
-            console.log('error here')
+        catch(e) {
+            console.log('error here',e)
             return { error: "no page exists" }
         }
     }

@@ -331,6 +331,7 @@ const launchSearch = async (req, res) => {
     let totalPublished = 0
     let totalArticles = 0
     let allArticles = []
+    const lastUrl=lowRelevanceArticles[lowRelevanceArticles.length-1]
     const { defaultImage } = await profileModel.findOne({ userId })
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
@@ -344,7 +345,8 @@ const launchSearch = async (req, res) => {
             totalArticles += articleUrlsArray.length
             allArticles = [...allArticles, ...articleUrlsArray]
         }
-        for (let p of allArticles.slice(0, limit)) {
+        const startFrom=allArticles.indexOf(lastUrl)+1
+        for (let p of allArticles.slice(startFrom, startFrom+limit)) {
             const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
             if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
                 const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {

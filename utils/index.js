@@ -163,29 +163,6 @@ const dissbotFetchArticle = async (url) => {
         const data = await (await extratus).extract(url)
         content = data.content
         title = data.title
-        // const browser = await playwright.chromium.launch({ headless: false });
-
-        // const context = await browser.newContext();
-
-        // const page = await context.newPage();
-
-        // await page.goto(url);
-
-        // await new Promise((resolve, reject) => {
-        //     setTimeout(() => {
-        //         resolve('done')
-        //     }, 5000)
-        // })
-
-
-        // let newContent = await page.content()
-        // const newData = await (await extratus).extract(content = newContent)
-        // // Navigate to the website
-        // content = newData.content
-        // title = newData.title
-        // console.log(content)
-        // await  browser.close()
-
     }
     catch {
         try {

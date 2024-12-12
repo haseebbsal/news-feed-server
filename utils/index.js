@@ -161,7 +161,6 @@ const dissbotFetchArticle = async (url) => {
     let title
     try {
         const data = await (await extratus).extract(url)
-        console.log(data.content)
         content = data.content
         title = data.title
         // const browser = await playwright.chromium.launch({ headless: false });
@@ -203,10 +202,10 @@ const dissbotFetchArticle = async (url) => {
                 }, 5000)
             })
 
-            let content = await page.content()
+            let newContent = await page.content()
             var { Readability } = require('@mozilla/readability');
             var { JSDOM } = require('jsdom');
-            var doc = new JSDOM(content, {
+            var doc = new JSDOM(newContent, {
                 url
             });
             let reader = new Readability(doc.window.document);

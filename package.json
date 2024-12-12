@@ -3,6 +3,8 @@
     "@aws-sdk/client-s3": "^3.701.0",
     "@extractus/article-extractor": "^8.0.16",
     "@google/generative-ai": "^0.14.1",
+    "@mozilla/readability": "^0.5.0",
+    "@postlight/parser": "^2.2.3",
     "article-parser": "^7.2.6-rc1",
     "axios": "^1.7.2",
     "bcrypt": "^5.1.1",
@@ -28,6 +30,7 @@
     "otp-generator": "^4.0.1",
     "playwright": "^1.49.1",
     "puppeteer": "^23.10.3",
+    "readability-js": "^1.0.7",
     "speakeasy": "^2.0.0"
   },
   "scripts": {

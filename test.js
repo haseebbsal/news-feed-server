@@ -164,8 +164,8 @@
 
 
 
-const extractt = require('article-parser')
-// const extratus=import('@extractus/article-extractor')
+// const extractt = require('article-parser')
+const extratus = import('@extractus/article-extractor')
 // const cheerio=require('cheerio')
 // const axios=require('axios')
 const puppeteer = require('puppeteer')
@@ -178,62 +178,56 @@ async function check() {
 
     const page = await context.newPage();
 
-    // Navigate to the website
+    await page.goto("https://aviationworld.in/india-to-have-700-charter-business-aircraft-by-2029/", { timeout: 3600000 });
 
-    await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{timeout:3600000});
-    
-    await new Promise((resolve,reject)=>{
-        setTimeout(()=>{
-           resolve('done')
-        },5000)   
-       })
-    // const data = await axios.get("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
-    // const cheerioExtract=cheerio.load(data.data)
-    // console.log(cheerioExtract.html())
-    // const data = await extractt.extract("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
-    // const data=(await extratus).extract("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released")
-    // const content = data.content
-    // const title = data.title
-    // console.log(await data.d)
-    // console.log(content)
-    // console.log(title)
+    await new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve('done')
+        }, 5000)
+    })
 
 
-
-    // const browser = await puppeteer.launch({ headless: false });
-    // const page = await browser.newPage();
-
-    // // Navigate the page to a URL
-    // await page.goto("https://www.ncsc.gov.uk/blog-post/cyber-security-toolkit-for-boards-updated-briefing-pack-released",{waitUntil:'networkidle0'});
-    // // Set screen size
-    // await page.setViewport({ width: 1080, height: 1024 });
-    // // await page.waitForNavigation({
-    // //     waitUntil: 'networkidle0',
-    // // });
 
     let content = await page.content()
-    const newData = await extractt.extract(content = content)
-    console.log(newData.content)
-    console.log(newData.title)
-    // await page.close()
 
-    // console.log(await page.content()  )
-    // Type into search box
-    // await page.type('.search-box__input', 'automate beyond recorder');
+    var read = require('readability-js');
 
-    // // Wait and click on first result
-    // const searchResultSelector = '.search-box__link';
-    // await page.waitForSelector(searchResultSelector);
-    // await page.click(searchResultSelector);
+    // read(content, {onlyArticleBody:true},function (err, article, meta) {
+    //     // Main Article
+    //     // console.log(article.content.text());
 
-    // // Locate the full title with a unique string
-    // const textSelector = await page.waitForSelector(
-    //   'text/Customize and automate'
-    // );
-    // const fullTitle = await textSelector?.evaluate(el => el.textContent);
+    //     article.c
+    //     // Title
+    //     console.log(article.title);
 
-    // // Print the full title
-    // console.log('The title of this blog post is "%s".', fullTitle);
+    //     // Article HTML Source Code
+    //     console.log(article.content.html());
+    // });
+
+
+
+    var { Readability } = require('@mozilla/readability');
+    var { JSDOM } = require('jsdom');
+    var doc = new JSDOM(content, {
+        url: "https://aviationworld.in/india-to-have-700-charter-business-aircraft-by-2029/"
+      });
+    let reader = new Readability(doc.window.document);
+    let article = reader.parse();
+    console.log(article.content)
+    console.log(article.title)
+    
+
+
+
+
+    // console.log(content)
+    // const data = (await extratus)
+    // const extracting = await data.extract(content)
+    // console.log(extracting.content)
+    // console.log(extracting.image)
+
+
+
 
     await browser.close();
 }
@@ -244,3 +238,12 @@ check()
 
 
 
+
+async function check2() {
+    const data = (await extratus)
+    const extracting = await data.extract("https://www.ncsc.gov.uk/guidance/guidance-brands-advertising-partners-counter-malvertising")
+    console.log(extracting.content)
+}
+
+
+// check2()

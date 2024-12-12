@@ -1,17 +1,13 @@
 const jwt = require('jsonwebtoken')
 const cheerio = require('cheerio');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAi = require('openai')
-const extractt = require('article-parser')
 const nodemailer = require('nodemailer')
 require('dotenv').config()
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
 const domainEnum = ['1', '2']
 const nanoidd = import('nanoid')
 const S3 = require('@aws-sdk/client-s3')
-const playwright = require('playwright');
-
 const s3Client = new S3.S3({
     forcePathStyle: false, // Configures to use subdomain/virtual calling format.
     endpoint: "https://nyc3.digitaloceanspaces.com",
@@ -21,6 +17,11 @@ const s3Client = new S3.S3({
         secretAccessKey: process.env.spaces_secret
     }
 })
+const extratus = import('@extractus/article-extractor')
+
+
+const playwright = require('playwright');
+
 
 
 // const domains = {
@@ -159,62 +160,72 @@ const dissbotFetchArticle = async (url) => {
     let content
     let title
     try {
-        const browser = await playwright.chromium.launch({ headless: true });
-
-        const context = await browser.newContext();
-
-        const page = await context.newPage();
-
-        await page.goto(url,{timeout:3600000});
-
-        await new Promise((resolve,reject)=>{
-         setTimeout(()=>{
-            resolve('done')
-         },5000)   
-        })
-
-        
-    
-        const newContent=await page.content()
-        const data = await extractt.extract(content = newContent)
+        const data = await (await extratus).extract(url)
+        console.log(data.content)
         content = data.content
         title = data.title
-        await browser.close();
+        // const browser = await playwright.chromium.launch({ headless: false });
+
+        // const context = await browser.newContext();
+
+        // const page = await context.newPage();
+
+        // await page.goto(url);
+
+        // await new Promise((resolve, reject) => {
+        //     setTimeout(() => {
+        //         resolve('done')
+        //     }, 5000)
+        // })
+
+
+        // let newContent = await page.content()
+        // const newData = await (await extratus).extract(content = newContent)
+        // // Navigate to the website
+        // content = newData.content
+        // title = newData.title
+        // console.log(content)
+        // await  browser.close()
 
     }
-    catch (e) {
-        console.log('error here', e)
-        return { error: "no page exists" }
+    catch {
+        try {
+            const browser = await playwright.chromium.launch({ headless: false });
+
+            const context = await browser.newContext();
+
+            const page = await context.newPage();
+            await page.goto(url, { timeout: 3600000 });
+
+            await new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve('done')
+                }, 5000)
+            })
+
+            let content = await page.content()
+            var { Readability } = require('@mozilla/readability');
+            var { JSDOM } = require('jsdom');
+            var doc = new JSDOM(content, {
+                url: "https://aviationworld.in/india-to-have-700-charter-business-aircraft-by-2029/"
+            });
+            let reader = new Readability(doc.window.document);
+            let article = reader.parse();
+            content=article.content
+            title=article.title
+            await browser.close()
+
+        }
+        catch {
+            console.log('error here')
+            return { error: "no page exists" }
+        }
     }
     return await new Promise((resolve, reject) => {
-        // readability(url, function (err, article) {
-        //     if (err) {
-        //         console.log('error', url)
-        //         resolve({ error: "no page exists" })
-        //     } else {
-        //         const text = extractTextFromHTML(article.content);
-        //         resolve({ html: article.content, link: url, text, title: article.title })
-        //     }
-        // });
         const text = extractTextFromHTML(content);
         resolve({ html: content, link: url, text, title: title })
     })
 
-
-
-
-
-
-
-
-
-
-    // const dissbot_api_call = await axios.get(`https://api.diffbot.com/v3/article?url=${url}&token=${token}`)
-    // const text = dissbot_api_call.data.objects[0].text
-    // const html = dissbot_api_call.data.objects[0].html
-    // const title = dissbot_api_call.data.objects[0].title
-    // const link = dissbot_api_call.data.request.pageUrl
-    // return { text, html, link, title }
 }
 
 const generateImage = async (title) => {
@@ -290,7 +301,13 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                     return { relevanceIndex: relevanceIndexGemini, rewritten: htmll, title, link, rewriteImage: keys, files }
                 }
             }
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a detailed, well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
+    
+    The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
+    Remove all images from the HTML content, regardless of their relevance to the summary.
+    At the very end of the article, on a separate line, include the following note in the exact specified format:
+    <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
 
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
             return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }

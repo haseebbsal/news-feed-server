@@ -207,7 +207,7 @@ const dissbotFetchArticle = async (url) => {
             var { Readability } = require('@mozilla/readability');
             var { JSDOM } = require('jsdom');
             var doc = new JSDOM(content, {
-                url: "https://aviationworld.in/india-to-have-700-charter-business-aircraft-by-2029/"
+                url
             });
             let reader = new Readability(doc.window.document);
             let article = reader.parse();

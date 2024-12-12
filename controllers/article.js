@@ -331,8 +331,8 @@ const launchSearch = async (req, res) => {
     let totalPublished = 0
     let totalArticles = 0
     let allArticles = []
-    const lastUrl=lowRelevanceArticles[lowRelevanceArticles.length-1]
     const { defaultImage } = await profileModel.findOne({ userId })
+    const limitCheck=0
     if (urls.length > 0 && keywords) {
         for (let j of urls) {
             let articleUrlsArray
@@ -345,9 +345,9 @@ const launchSearch = async (req, res) => {
             totalArticles += articleUrlsArray.length
             allArticles = [...allArticles, ...articleUrlsArray]
         }
-        const startFrom=allArticles.indexOf(lastUrl)+1
-        for (let p of allArticles.slice(startFrom, startFrom+limit)) {
-            const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
+        for (let p of allArticles) {
+            if(limitCheck!=limit){
+                const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
             if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
                 const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {
 
@@ -427,10 +427,16 @@ const launchSearch = async (req, res) => {
                         console.log('published Rewritten Article', publishArticle._id)
                         console.log('uploaded to wordpress', uploadingToDomain.message)
                     }
+
+                    limitCheck+=1
                 }
                 else {
                     await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
                 }
+            }
+            }
+            else{
+                break
             }
         }
 

@@ -187,13 +187,13 @@ const dissbotFetchArticle = async (url) => {
             });
             let reader = new Readability(doc.window.document);
             let article = reader.parse();
-            content=article.content
-            title=article.title
+            content = article.content
+            title = article.title
             await browser.close()
 
         }
-        catch(e) {
-            console.log('error here',e)
+        catch (e) {
+            console.log('error here', e)
             return { error: "no page exists" }
         }
     }
@@ -253,12 +253,12 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                 if (generateImages) {
                     let rewriteImage = await recursionGenerateImage(title)
                     const rewritePrompt = `You are an AI model tasked with rewriting HTML content provided by the user And Not Return Mark Down Content. Your goal is to update and rewrite the text content (headings, paragraphs, etc.) while ensuring the content is well-structured and relevant.
-                    
-                    Remove all images from the HTML content and add An image with the following URL: ${rewriteImage}, which should be included in the body of the content.
-                    At the very end of the article, include the following note in the exact specified format:
-                    "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
-                    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
-                    `
+    
+    Remove all images from the HTML content and make sure to add An image with the following URL: ${rewriteImage}, which should be included in the body of the content.
+    At the very end of the article, include the following note in the exact specified format:
+    "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+    `
 
                     const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
                     const { html: htmll, keys, files } = await Manipulate(rewriteHtml)
@@ -277,13 +277,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
                     return { relevanceIndex: relevanceIndexGemini, rewritten: htmll, title, link, rewriteImage: keys, files }
                 }
             }
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user And Not Return Mark Down Content. Your goal is to create a detailed and comprehensive summary of the text content within the HTML, while ensuring the content remains well-structured and relevant.
-    
-    The summary should not be too short and concise; instead, aim to include all key details, expand on important points, and provide a clear and thorough representation of the content.
-    Remove all images from the HTML content, regardless of their relevance to the summary.
-    At the very end of the article, on a separate line, include the following note in the exact specified format:
-    <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>
-    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and ensure the link is wrapped in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
 
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
             return { relevanceIndex: relevanceIndexGemini, summary: summaryHtml, title, link }

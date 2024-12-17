@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt')
 const { userModel, scheduleModel, profileModel } = require('../db-models')
 const speakeasy = require('speakeasy');
 const { sendEmail, verifyToken } = require('../utils');
-
+    
 
 const login = async (req, res) => {
     const { email, password } = req.body

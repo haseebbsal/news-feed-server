@@ -155,7 +155,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
     "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
     Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
     `
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains very small, relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 
@@ -170,7 +170,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
             "Article has been taken from [article domain]: <a href='${link}'>${link}</a>".
             Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
             `
-            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
+            const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains very small, relevant and thorough. At the end of the summary, include the following HTML note: <p>Article has been taken from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
             const summaryHtml = await rewriteOrSummaryHtml(summaryPrompt, html)
 

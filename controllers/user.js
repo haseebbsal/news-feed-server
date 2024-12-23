@@ -41,7 +41,7 @@ const deleteUser=async (req, res) => {
     const { id } = req.query
     const deleteUser = await userModel.deleteOne({ _id: id })
     const deleteSchedule=await scheduleModel.deleteOne({userId:id})
-    const getProfile=await profileModel.findOne({userId})
+    const getProfile=await profileModel.findOne({userId:id})
     const deleteProfile=await profileModel.deleteOne({userId:id})
     if(getProfile.defaultImage){
         await DeleteFromBucket(getProfile.defaultImage)
@@ -92,19 +92,26 @@ const changePasswordUser=async(req,res)=>{
 
 const updateProfile=async (req,res)=>{
     try{
-        const {buffer}=req.file
+        // console.log(req.file)
+        console.log(req.body)
+        let data={...req.body}
         const accessToken=req.headers.authorization.split(' ')[1]
         const accessTokenData=verifyToken(accessToken)
         const userId = accessTokenData.user._id
-        const {key}=await SaveToBucket(buffer)
-        const getCurrentImage=await profileModel.findOne({userId})
-        if(getCurrentImage.defaultImage){
-            await DeleteFromBucket(getCurrentImage.defaultImage)
+        if(req.file){
+            const {buffer}=req.file
+            const {key}=await SaveToBucket(buffer)
+            const getCurrentImage=await profileModel.findOne({userId})
+            if(getCurrentImage.defaultImage){
+                await DeleteFromBucket(getCurrentImage.defaultImage)
+            }
+            data.defaultImage=key
         }
-        const updateProfile=await profileModel.updateOne({userId},{$set:{defaultImage:key}},{upsert:true})
+        const updateProfile=await profileModel.updateOne({userId},{$set:data},{upsert:true})
         return res.json({message:"Success",data:updateProfile})
     }
-    catch{
+    catch(e){
+        console.log(e)
         return res.status(400).json("error")
     }
 }

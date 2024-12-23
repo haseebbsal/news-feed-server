@@ -112,7 +112,7 @@ const publishedArticlesSchema=new mongoose.Schema(
         },
         domain:{
             type:String,
-            enum:domainEnum
+            required:true
         },
         publishType:{
             type:String,
@@ -140,6 +140,10 @@ const profileSchema=new mongoose.Schema({
         type:mongoose.SchemaTypes.ObjectId,
         ref:"users",
         required:true
+    },
+    defaultDomain:{
+        type:String,
+        default:'1'
     }
 })
 

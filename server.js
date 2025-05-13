@@ -39,13 +39,13 @@ cron.schedule('* * * * *', async () => {
     if (getAllScheduled.length > 0) {
         for (let e of getAllScheduled) {
             const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, userId, domain: wordpressDomain, lowRelevanceArticles, periodicity, limit, generateImages } = e
-            // const currentDate = moment().format("YYYY-MM-DD")
-            // const hour= moment().hour()
-            // const minute= moment().minute()
+            const currentDate = moment().format("YYYY-MM-DD")
+            const hour= moment().hour()
+            const minute= moment().minute()
 
-            const currentDate = '2025-05-15'
-            const hour=0
-            const minute= 0
+            // const currentDate = '2025-05-15'
+            // const hour=0
+            // const minute= 0
             const nextDate = moment(new Date(timeOfCheck)).format("YYYY-MM-DD")
             console.log('currentDate', currentDate, 'current hour', hour, 'current minute', minute)
             console.log('Database Date', nextDate, 'current hour', periodicity.hour, 'current minute', periodicity.minute)

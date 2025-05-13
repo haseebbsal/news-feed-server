@@ -8,10 +8,12 @@ const { default: mongoose } = require('mongoose')
 const cron = require('node-cron')
 const PORT = `${process.env.PORT}`
 const helmet = require('helmet')
-const { scheduleModel, publishedArticleModel, profileModel } = require('./db-models')
+const { scheduleModel, publishedArticleModel, profileModel,adminModel } = require('./db-models')
 const { default: axios } = require('axios')
-const { Scrap, GetArticleDataSchedule, domains, GetArticleData } = require('./utils')
+const { Scrap, GetArticleDataSchedule, domains, GetArticleData ,urltoFile} = require('./utils')
 const moment = require('moment')
+const { File } = require('undici');
+
 app.use(cors({
     origin: `*`
 }))
@@ -37,11 +39,17 @@ cron.schedule('* * * * *', async () => {
     if (getAllScheduled.length > 0) {
         for (let e of getAllScheduled) {
             const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, userId, domain: wordpressDomain, lowRelevanceArticles, periodicity, limit, generateImages } = e
-            const currentDate = moment().format("YYYY-MM-DD")
+            // const currentDate = moment().format("YYYY-MM-DD")
+            // const hour= moment().hour()
+            // const minute= moment().minute()
+
+            const currentDate = '2025-05-15'
+            const hour=0
+            const minute= 0
             const nextDate = moment(new Date(timeOfCheck)).format("YYYY-MM-DD")
-            console.log('currentDate', currentDate, 'current hour', moment().hour(), 'current minute', moment().minute())
+            console.log('currentDate', currentDate, 'current hour', hour, 'current minute', minute)
             console.log('Database Date', nextDate, 'current hour', periodicity.hour, 'current minute', periodicity.minute)
-            if ((currentDate == nextDate) && moment().hour() == periodicity.hour && moment().minute() == periodicity.minute) {
+            if ((currentDate == nextDate) && hour == periodicity.hour && minute == periodicity.minute) {
                 let totalArticleUrls = []
                 let limitCheck = 0
                 for (let j of urls) {
@@ -56,6 +64,8 @@ cron.schedule('* * * * *', async () => {
                             const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {
                                 resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType, generateImages))
                             })
+
+                            
                             limitCheck += 1
                             if (!message) {
 
@@ -65,7 +75,8 @@ cron.schedule('* * * * *', async () => {
                                     let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
                                     domainToPublishTo = domainToPublishTo.domains[0].domain
                                     const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
+                                    console.log(uploadingToDomain)
+                                    const { id,message } = uploadingToDomain.data
                                     if (rewriteImage.length) {
                                         const formData = new FormData()
                                         formData.append('file', files[0])
@@ -84,14 +95,15 @@ cron.schedule('* * * * *', async () => {
                                     }
                                     const publishArticle = await publishedArticleModel.create({ userId, article: original, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '1', articleImage: rewriteImage })
                                     console.log('published Original Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
+                                    console.log('uploaded to wordpress', message)
                                 }
                                 else if (summary) {
                                     const payload = { title, "status": "publish", content: summary }
                                     let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
                                     domainToPublishTo = domainToPublishTo.domains[0].domain
                                     const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
+                                    console.log(uploadingToDomain)
+                                    const { id ,message} = uploadingToDomain.data
                                     const getUserDefaultImage = await profileModel.findOne({ userId })
                                     if (getUserDefaultImage.defaultImage) {
                                         let file = await urltoFile(`${process.env.bucket_url}/${getUserDefaultImage.defaultImage}`)
@@ -104,14 +116,14 @@ cron.schedule('* * * * *', async () => {
                                     const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                     const publishArticle = await publishedArticleModel.create({ userId, article: summary, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '3' })
                                     console.log('published Summary Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
+                                    console.log('uploaded to wordpress', message)
                                 }
                                 else {
                                     const payload = { title, "status": "publish", content: rewritten }
                                     let domainToPublishTo = await adminModel.findOne({}, { domains: { $arrayElemAt: ["$domains", Number(wordpressDomain) - 1] } })
                                     domainToPublishTo = domainToPublishTo.domains[0].domain
                                     const uploadingToDomain = await axios.post(`${domainToPublishTo}/wp-json/wp/v2/posts`, payload)
-                                    const { id } = uploadingToDomain.data
+                                    const { id, message } = uploadingToDomain.data
                                     if (rewriteImage.length) {
                                         const formData = new FormData()
                                         formData.append('file', files[0])
@@ -129,7 +141,7 @@ cron.schedule('* * * * *', async () => {
                                     }
                                     const publishArticle = await publishedArticleModel.create({ userId, article: rewritten, title, articleUrl: link, articleId: id, domain: wordpressDomain, publishType: '2', articleImage: rewriteImage })
                                     console.log('published Rewritten Article', publishArticle._id)
-                                    console.log('uploaded to wordpress', uploadingToDomain.message)
+                                    console.log('uploaded to wordpress', message)
                                 }
                             }
                             else {

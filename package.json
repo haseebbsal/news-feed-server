@@ -31,7 +31,8 @@
     "playwright": "^1.49.1",
     "puppeteer": "^23.10.3",
     "readability-js": "^1.0.7",
-    "speakeasy": "^2.0.0"
+    "speakeasy": "^2.0.0",
+    "undici": "^6.21.3"
   },
   "scripts": {
     "dev": "nodemon start server.js",

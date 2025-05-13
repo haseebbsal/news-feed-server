@@ -7,8 +7,7 @@ const { default: axios } = require("axios")
 require('dotenv').config()
 const OpenAi = require('openai')
 const openai = new OpenAi({ apiKey: process.env.OPENAI_API_KEY })
-
-
+const { File } = require('undici');
 
 
 const publishArticle = async (req, res) => {
@@ -367,9 +366,9 @@ const launchSearch = async (req, res) => {
                             if (!rewriteImage.length) {
                                 if (defaultImage) {
                                     let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                    file = new File([new Blob([file])], 'anything.png')
+                                    const uploadFile = new File([new Blob([file])], 'anything.png')
                                     const formData = new FormData()
-                                    formData.append('file', file)
+                                    formData.append('file', uploadFile)
                                     // console.log(files[0])
                                     const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 }
@@ -386,9 +385,9 @@ const launchSearch = async (req, res) => {
                             const { id } = uploadingToDomain.data
                             if (defaultImage) {
                                 let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                file = new File([new Blob([file])], 'anything.png')
+                                const uploadFile = new File([new Blob([file])], 'anything.png')
                                 const formData = new FormData()
-                                formData.append('file', file)
+                                formData.append('file', uploadFile)
                                 const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                             }
                             // console.log(files[0])
@@ -412,9 +411,9 @@ const launchSearch = async (req, res) => {
                             if (!rewriteImage.length) {
                                 if (defaultImage) {
                                     let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                    file = new File([new Blob([file])], 'anything.png')
+                                    const uploadFile = new File([new Blob([file])], 'anything.png')
                                     const formData = new FormData()
-                                    formData.append('file', file)
+                                    formData.append('file', uploadFile)
                                     // console.log(files[0])
                                     const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 }

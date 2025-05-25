@@ -322,7 +322,6 @@ const launchSearch = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity, limit, generateImages } = await scheduleModel.findOne({ userId })
-    console.log('publishType', publishType)
     let totalPublished = 0
     let totalArticles = 0
     let allArticles = []

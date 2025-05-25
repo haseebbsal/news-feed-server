@@ -180,6 +180,7 @@ const dissbotFetchArticle = async (url) => {
             })
 
             let newContent = await page.content()
+            console.log('newww',newContent)
             var { Readability } = require('@mozilla/readability');
             var { JSDOM } = require('jsdom');
             var doc = new JSDOM(newContent, {
@@ -199,6 +200,7 @@ const dissbotFetchArticle = async (url) => {
     }
     return await new Promise((resolve, reject) => {
         const text = extractTextFromHTML(content);
+        console.log(text)
         resolve({ html: content, link: url, text, title: title })
     })
 

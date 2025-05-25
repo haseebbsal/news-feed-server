@@ -49,7 +49,7 @@ cron.schedule('* * * * *', async () => {
             const nextDate = moment(new Date(timeOfCheck)).format("YYYY-MM-DD")
             console.log('currentDate', currentDate, 'current hour', hour, 'current minute', minute)
             console.log('Database Date', nextDate, 'current hour', periodicity.hour, 'current minute', periodicity.minute)
-            if ((currentDate == nextDate) && hour == periodicity.hour && minute == periodicity.minute) {
+            if ((moment(currentDate).isSameOrAfter(nextDate)) && hour >= periodicity.hour && minute >= periodicity.minute) {
                 let totalArticleUrls = []
                 let limitCheck = 0
                 for (let j of urls) {

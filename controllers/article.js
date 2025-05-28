@@ -103,6 +103,7 @@ const scheduleArticle = async (req, res) => {
             const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, publishType, periodicity, limit, generateImages } }, { upsert: true })
             return res.json({ message: "Success", data: addToScheduledData })
         }
+        
     }
     catch (e) {
         console.log(e)

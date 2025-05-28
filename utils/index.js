@@ -200,7 +200,7 @@ const dissbotFetchArticle = async (url) => {
     }
     return await new Promise((resolve, reject) => {
         const text = extractTextFromHTML(content);
-        console.log(text)
+        // console.log(text)
         resolve({ html: content, link: url, text, title: title })
     })
 

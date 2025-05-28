@@ -66,7 +66,7 @@ cron.schedule('* * * * *', async () => {
                             })
 
                             
-                            limitCheck += 1
+                            
                             if (!message) {
 
 
@@ -143,6 +143,7 @@ cron.schedule('* * * * *', async () => {
                                     console.log('published Rewritten Article', publishArticle._id)
                                     console.log('uploaded to wordpress', message)
                                 }
+                                limitCheck += 1
                             }
                             else {
                                 await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })

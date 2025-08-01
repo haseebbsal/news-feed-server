@@ -51,7 +51,7 @@ const login = async (req, res) => {
 }
 
 const register = async (req, res) => {
-    const { username, email, password } = req.body
+    const { username, email, password,isAdmin } = req.body
     const checkUsernameExists = await userModel.findOne({ username })
     if (!checkUsernameExists) {
         const checkEmailExists = await userModel.findOne({ email })
@@ -63,6 +63,10 @@ const register = async (req, res) => {
                 secret: generateVerifyCode.base32,
                 encoding: 'base32'
             });
+            // if(isAdmin){
+            //     const createNewUser = await userModel.create({ email, username, password: newPassword, isApproved: true,role:2 })
+            //     return res.json(createNewUser)
+            // }
             const sendEmailToClient = sendEmail(email, code,username)
             console.log('email sent', sendEmailToClient)
             const createNewUser = await userModel.create({ email, username, password: newPassword, verificationCode: code, isApproved: false })

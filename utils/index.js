@@ -409,7 +409,7 @@ async function sendEmail(email, code, username) {
     });
 
     const sender = {
-        address: "no-reply@rias-aero.com",
+        address: "no-reply@jbsinc.co",
         name: "Welcome To Search",
     };
     const recipients = [

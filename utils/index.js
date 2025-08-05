@@ -259,7 +259,7 @@ const GetArticleDataSchedule = async (url, keywords, relevanceIndex, publishType
     Remove all images from the HTML content and make sure to add An image with the following URL: ${rewriteImage}, which should be included in the body of the content.
     At the very end of the article, include the following note in the exact specified format:
     "Based on an article from [article domain]: <a href='${link}'>${link}</a>".
-    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag. At the same time add marketing clauses at the end before the link to pivot readers to check out the insurance company and get insurance from first Heartland.
     `
 
                     const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)

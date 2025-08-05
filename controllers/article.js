@@ -153,7 +153,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
     Remove all images from the HTML content and make sure to add An image with the following URL: ${rewriteImage}, which should be included in the body of the content.
     At the very end of the article, include the following note in the exact specified format:
     "Based on an article from [article domain]: <a href='${link}'>${link}</a>".
-    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+    Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag. At the same time add marketing clauses at the end before the link to pivot readers to check out the insurance company and get insurance from first Heartland.
     `
             const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains very small, relevant and thorough. At the end of the summary, include the following HTML note: <p>Based on an article from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)
@@ -168,7 +168,7 @@ const GetArticleDataNotSchedule = async (req, res) => {
             Remove all images from the HTML content.
             At the very end of the article, include the following note in the exact specified format:
             "Based on an article from [article domain]: <a href='${link}'>${link}</a>".
-            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag.
+            Replace [article domain] with the actual domain from which the article is sourced (e.g., aviationweek.com), and make sure the link is wrapped in an <a> tag. At the same time add marketing clauses at the end before the link to pivot readers to check out the insurance company and get insurance from first Heartland with an anchor tag to this link https://www.firstheartland.com/ and also describe the site.
             `
             const summaryPrompt = `You are an AI model tasked with summarizing HTML content provided by the user in HTML format (not Markdown). Create a well-structured summary of the text content, removing all images, and ensuring the content remains very small, relevant and thorough. At the end of the summary, include the following HTML note: <p>Based on an article from [article domain]: <a href='${link}'>${link}</a></p>, replacing [article domain] with the actual domain (e.g., aviationweek.com) and wrapping the link in an <a> tag.`
             const rewriteHtml = await rewriteOrSummaryHtml(rewritePrompt, html)

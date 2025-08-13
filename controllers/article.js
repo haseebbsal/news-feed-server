@@ -103,7 +103,6 @@ const scheduleArticle = async (req, res) => {
             const addToScheduledData = await scheduleModel.updateOne({ userId: user._id }, { "$set": { urls, keywords, domain, relevanceIndex, publishType, periodicity, limit, generateImages } }, { upsert: true })
             return res.json({ message: "Success", data: addToScheduledData })
         }
-        
     }
     catch (e) {
         console.log(e)
@@ -323,6 +322,7 @@ const launchSearch = async (req, res) => {
     const accessTokenData = verifyToken(accessToken)
     const userId = accessTokenData.user._id
     const { relevanceIndex, keywords, timeOfCheck, timeCheckType, urls, _id, publishType, domain: wordpressDomain, lowRelevanceArticles, periodicity, limit, generateImages } = await scheduleModel.findOne({ userId })
+    console.log('publishType', publishType)
     let totalPublished = 0
     let totalArticles = 0
     let allArticles = []
@@ -341,13 +341,13 @@ const launchSearch = async (req, res) => {
             allArticles = [...allArticles, ...articleUrlsArray]
         }
         // console.log(allArticles)
-        for (let p of allArticles) {
+        for (let current_url of allArticles) {
             if (limitCheck != limit) {
-                const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: p })
-                if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(p)) {
+                const checkIfAlreadyPublishedUrl = await publishedArticleModel.findOne({ userId, articleUrl: current_url })
+                if (!checkIfAlreadyPublishedUrl && !lowRelevanceArticles.includes(current_url)) {
                     const { message, relevanceIndex: relevanceIndexx, original, summary, rewritten, title, link, rewriteImage, files } = await new Promise(async (resolvee, reject) => {
 
-                        resolvee(await GetArticleData(p, keywords, relevanceIndex, publishType, generateImages))
+                        resolvee(await GetArticleData(current_url, keywords, relevanceIndex, publishType, generateImages))
                     })
                     if (!message) {
 
@@ -366,9 +366,9 @@ const launchSearch = async (req, res) => {
                             if (!rewriteImage.length) {
                                 if (defaultImage) {
                                     let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                    const uploadFile = new File([new Blob([file])], 'anything.png')
+                                    file = new File([new Blob([file])], 'anything.png')
                                     const formData = new FormData()
-                                    formData.append('file', uploadFile)
+                                    formData.append('file', file)
                                     // console.log(files[0])
                                     const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 }
@@ -385,9 +385,9 @@ const launchSearch = async (req, res) => {
                             const { id } = uploadingToDomain.data
                             if (defaultImage) {
                                 let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                const uploadFile = new File([new Blob([file])], 'anything.png')
+                                file = new File([new Blob([file])], 'anything.png')
                                 const formData = new FormData()
-                                formData.append('file', uploadFile)
+                                formData.append('file', file)
                                 const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                             }
                             // console.log(files[0])
@@ -411,9 +411,9 @@ const launchSearch = async (req, res) => {
                             if (!rewriteImage.length) {
                                 if (defaultImage) {
                                     let file = await urltoFile(`${process.env.bucket_url}/${defaultImage}`)
-                                    const uploadFile = new File([new Blob([file])], 'anything.png')
+                                    file = new File([new Blob([file])], 'anything.png')
                                     const formData = new FormData()
-                                    formData.append('file', uploadFile)
+                                    formData.append('file', file)
                                     // console.log(files[0])
                                     const puttingThumbnail = await axios.postForm(`${domainToPublishTo}/wp-json/wp/v2/upload_media?post_id=${id}`, formData)
                                 }
@@ -427,7 +427,7 @@ const launchSearch = async (req, res) => {
                         limitCheck += 1
                     }
                     else {
-                        await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: p } })
+                        await scheduleModel.updateOne({ _id }, { $addToSet: { lowRelevanceArticles: current_url } })
                     }
                 }
             }
